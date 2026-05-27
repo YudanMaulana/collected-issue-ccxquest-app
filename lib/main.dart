@@ -6,28 +6,18 @@ import 'screens/pin_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/issue_list_screen.dart';
 
-import 'repositories/supabase_issue_repository.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'repositories/http_issue_repository.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // ==========================================
-  // TO SWITCH TO SUPABASE BACKEND:
-  // 1. Uncomment the block below and replace with your Supabase credentials:
-  //
-  await Supabase.initialize(
-    url: 'https://qttbmizkcmqclzzmqiyd.supabase.co',
-    anonKey:
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF0dGJtaXprY21xY2x6em1xaXlkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4Njk5NjQsImV4cCI6MjA5NTQ0NTk2NH0.JYdKpuJJaoUhpYwo1qkbKr8s_Urfcj0Ezl35tEP_o24',
-  );
-  //
-  // 2. Change the repository instantiation below to:
-  final IssueRepository repository = SupabaseIssueRepository();
+  // SERVER DATABASE & STORAGE MANDIRI (SQLite + Express.js)
+  // Alamat URL Wifi lokal laptop Anda (Port 5001)
   // ==========================================
-
-  // Use SQLite local repository for initial robust operation
-  // final IssueRepository repository = LocalIssueRepository();
+  final IssueRepository repository = HttpIssueRepository(
+    baseUrl: 'http://77.78.88.3:5001/api',
+  );
 
   runApp(MyApp(repository: repository));
 }
