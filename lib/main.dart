@@ -16,7 +16,7 @@ void main() async {
   // Alamat URL Wifi lokal laptop Anda (Port 5001)
   // ==========================================
   final IssueRepository repository = HttpIssueRepository(
-    baseUrl: 'http://77.78.88.3:5001/api',
+    baseUrl: 'https://cody-chronographic-tobi.ngrok-free.dev/api',
   );
 
   runApp(MyApp(repository: repository));
