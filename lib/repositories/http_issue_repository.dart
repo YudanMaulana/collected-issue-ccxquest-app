@@ -6,48 +6,65 @@ import 'issue_repository.dart';
 
 /// A robust REST HTTP implementation of the IssueRepository interface.
 /// Connects to the standalone Express & SQLite backend server.
-/// Features a memory-cache layer and transparent multipart file upload.
+/// Features a memory-cache layer, transparent multipart file upload, and verbose debug logging.
 class HttpIssueRepository implements IssueRepository {
   // Base URL of the standalone backend server
-  // Bound to the local network IP address by default
   final String baseUrl;
 
-  HttpIssueRepository({this.baseUrl = 'http://77.78.88.3:5001/api'});
+  HttpIssueRepository({this.baseUrl = 'http://77.78.88.3:5001/api'}) {
+    print('[HttpIssueRepository] Inisialisasi dengan Base URL: $baseUrl');
+  }
 
   // Cache Layer variables
   List<Issue>? _cachedIssues;
   bool _isCacheDirty = true;
   DateTime? _lastFetchTime;
-  static const Duration _cacheDuration = Duration(minutes: 2); // 2 minutes lifetime
+  static const Duration _cacheDuration = Duration(minutes: 2);
 
   // Helper to invalidate cache on mutations
   void _invalidateCache() {
+    print('[HttpIssueRepository] Invalidate cache lokal (Cache ditandai kotor/dirty).');
     _isCacheDirty = true;
     _cachedIssues = null;
   }
 
   @override
   Future<List<Issue>> getAllIssues({String? search, String? area, String? kategori, String? status, bool? incompleteOnly}) async {
-    // 1. Fetch from Express server only if cache is dirty, empty, or expired
+    print('[HttpIssueRepository] Memanggil getAllIssues(). Filter: search=$search, area=$area, kategori=$kategori, status=$status');
+    
+    // 1. Fetch dari server jika cache kotor, kosong, atau expired
     if (_isCacheDirty || 
         _cachedIssues == null || 
         _lastFetchTime == null || 
         DateTime.now().difference(_lastFetchTime!) > _cacheDuration) {
       
-      final response = await http.get(Uri.parse('$baseUrl/issues'));
+      final url = '$baseUrl/issues';
+      print('[HttpIssueRepository] Melakukan HTTP GET ke server: $url');
       
-      if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body) as List<dynamic>;
-        _cachedIssues = data.map((jsonMap) => Issue.fromMap(jsonMap as Map<String, dynamic>)).toList();
+      try {
+        final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 8));
+        print('[HttpIssueRepository] Respons diterima. Status HTTP: ${response.statusCode}');
         
-        _lastFetchTime = DateTime.now();
-        _isCacheDirty = false;
-      } else {
-        throw Exception('Gagal mengambil data kendala dari server: ${response.statusCode}');
+        if (response.statusCode == 200) {
+          final List<dynamic> data = json.decode(response.body) as List<dynamic>;
+          print('[HttpIssueRepository] Berhasil parse data JSON. Jumlah: ${data.length} baris.');
+          _cachedIssues = data.map((jsonMap) => Issue.fromMap(jsonMap as Map<String, dynamic>)).toList();
+          
+          _lastFetchTime = DateTime.now();
+          _isCacheDirty = false;
+        } else {
+          print('[HttpIssueRepository ERROR] Server mengembalikan status error: ${response.statusCode} - ${response.body}');
+          throw Exception('Gagal mengambil data dari server: ${response.statusCode}');
+        }
+      } catch (e) {
+        print('[HttpIssueRepository EXCEPTION] GAGAL MENGHUBUNGI SERVER pada $url! Error: $e');
+        rethrow;
       }
+    } else {
+      print('[HttpIssueRepository] Menggunakan cache lokal (Usia cache: ${DateTime.now().difference(_lastFetchTime!).inSeconds} detik).');
     }
 
-    // 2. Perform local filtering on the cached list (identical to Supabase implementation)
+    // 2. Perform local filtering
     List<Issue> filtered = List.from(_cachedIssues!);
 
     if (incompleteOnly == true) {
@@ -76,28 +93,42 @@ class HttpIssueRepository implements IssueRepository {
       ).toList();
     }
 
+    print('[HttpIssueRepository] Mengembalikan ${filtered.length} baris data setelah filter.');
     return filtered;
   }
 
   @override
   Future<Issue> getIssueById(int id) async {
-    // Check cache first
+    print('[HttpIssueRepository] Memanggil getIssueById(id: $id)');
     if (_cachedIssues != null && !_isCacheDirty) {
       try {
-        return _cachedIssues!.firstWhere((element) => element.id == id);
+        final cached = _cachedIssues!.firstWhere((element) => element.id == id);
+        print('[HttpIssueRepository] Detail ID $id ditemukan di cache.');
+        return cached;
       } catch (_) {}
     }
     
-    final response = await http.get(Uri.parse('$baseUrl/issues/$id'));
-    if (response.statusCode == 200) {
-      return Issue.fromMap(json.decode(response.body) as Map<String, dynamic>);
-    } else {
-      throw Exception('Data kendala tidak ditemukan.');
+    final url = '$baseUrl/issues/$id';
+    print('[HttpIssueRepository] Melakukan HTTP GET ke detail: $url');
+    
+    try {
+      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 8));
+      if (response.statusCode == 200) {
+        print('[HttpIssueRepository] Detail ID $id berhasil ditemukan di server.');
+        return Issue.fromMap(json.decode(response.body) as Map<String, dynamic>);
+      } else {
+        print('[HttpIssueRepository ERROR] Detail ID $id tidak ditemukan di server.');
+        throw Exception('Data kendala tidak ditemukan.');
+      }
+    } catch (e) {
+      print('[HttpIssueRepository EXCEPTION] Gagal mengambil detail ID $id: $e');
+      rethrow;
     }
   }
 
   @override
   Future<int> insertIssue(Issue issue) async {
+    print('[HttpIssueRepository] Memanggil insertIssue() untuk issue: "${issue.issue}"');
     _invalidateCache();
 
     Issue finalIssue = issue;
@@ -108,116 +139,151 @@ class HttpIssueRepository implements IssueRepository {
 
     final String? localPath = finalIssue.evide;
 
-    // Jika eviden berisi file lokal, lakukan upload via Multipart
-    if (localPath != null && !localPath.startsWith('http') && localPath.isNotEmpty) {
-      var request = http.MultipartRequest('POST', Uri.parse('$baseUrl/issues'));
-      
-      request.fields['tgl'] = finalIssue.tgl.toIso8601String();
-      request.fields['area'] = finalIssue.area;
-      request.fields['kategori'] = finalIssue.kategori;
-      request.fields['kode_issue'] = finalIssue.kodeIssue;
-      request.fields['issue'] = finalIssue.issue;
-      request.fields['tag_issue'] = finalIssue.tagIssue;
-      request.fields['penanganan'] = finalIssue.penanganan;
-      request.fields['status'] = finalIssue.status;
-      request.fields['lama_perbaikan'] = finalIssue.lamaPerbaikan.toString();
-      request.fields['penyebab'] = finalIssue.penyebab;
-      request.fields['month'] = _getMonthString(finalIssue.tgl);
+    try {
+      if (localPath != null && !localPath.startsWith('http') && localPath.isNotEmpty) {
+        final url = '$baseUrl/issues';
+        print('[HttpIssueRepository] Mengirim Multipart POST (dengan file lokal) ke: $url');
+        
+        var request = http.MultipartRequest('POST', Uri.parse(url));
+        
+        request.fields['tgl'] = finalIssue.tgl.toIso8601String();
+        request.fields['area'] = finalIssue.area;
+        request.fields['kategori'] = finalIssue.kategori;
+        request.fields['kode_issue'] = finalIssue.kodeIssue;
+        request.fields['issue'] = finalIssue.issue;
+        request.fields['tag_issue'] = finalIssue.tagIssue;
+        request.fields['penanganan'] = finalIssue.penanganan;
+        request.fields['status'] = finalIssue.status;
+        request.fields['lama_perbaikan'] = finalIssue.lamaPerbaikan.toString();
+        request.fields['penyebab'] = finalIssue.penyebab;
+        request.fields['month'] = _getMonthString(finalIssue.tgl);
 
-      request.files.add(await http.MultipartFile.fromPath('evide', localPath));
+        print('[HttpIssueRepository] Melampirkan file gambar: $localPath');
+        request.files.add(await http.MultipartFile.fromPath('evide', localPath));
 
-      var streamedResponse = await request.send();
-      var response = await http.Response.fromStream(streamedResponse);
+        var streamedResponse = await request.send().timeout(const Duration(seconds: 15));
+        var response = await http.Response.fromStream(streamedResponse);
 
-      if (response.statusCode == 201) {
-        final insertedJson = json.decode(response.body) as Map<String, dynamic>;
-        return insertedJson['id'] as int;
+        print('[HttpIssueRepository] Multipart respons diterima. Status: ${response.statusCode}');
+        if (response.statusCode == 201) {
+          final insertedJson = json.decode(response.body) as Map<String, dynamic>;
+          print('[HttpIssueRepository] Sukses menyimpan data. ID baru: ${insertedJson['id']}');
+          return insertedJson['id'] as int;
+        } else {
+          throw Exception('Gagal menyimpan data ke server: ${response.body}');
+        }
       } else {
-        throw Exception('Gagal menambahkan kendala dengan upload gambar.');
-      }
-    } else {
-      // Kirim POST JSON biasa jika tidak ada file lokal baru
-      final bodyMap = finalIssue.toMap();
-      bodyMap.remove('id');
-      bodyMap['month'] = _getMonthString(finalIssue.tgl);
+        final url = '$baseUrl/issues';
+        print('[HttpIssueRepository] Mengirim JSON POST ke: $url');
+        
+        final bodyMap = finalIssue.toMap();
+        bodyMap.remove('id');
+        bodyMap['month'] = _getMonthString(finalIssue.tgl);
 
-      final response = await http.post(
-        Uri.parse('$baseUrl/issues'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode(bodyMap),
-      );
+        final response = await http.post(
+          Uri.parse(url),
+          headers: {'Content-Type': 'application/json'},
+          body: json.encode(bodyMap),
+        ).timeout(const Duration(seconds: 8));
 
-      if (response.statusCode == 201) {
-        final insertedJson = json.decode(response.body) as Map<String, dynamic>;
-        return insertedJson['id'] as int;
-      } else {
-        throw Exception('Gagal menambahkan kendala.');
+        print('[HttpIssueRepository] Respons diterima. Status: ${response.statusCode}');
+        if (response.statusCode == 201) {
+          final insertedJson = json.decode(response.body) as Map<String, dynamic>;
+          print('[HttpIssueRepository] Sukses menyimpan data. ID baru: ${insertedJson['id']}');
+          return insertedJson['id'] as int;
+        } else {
+          throw Exception('Gagal menyimpan data ke server: ${response.body}');
+        }
       }
+    } catch (e) {
+      print('[HttpIssueRepository EXCEPTION] Gagal menyimpan issue baru: $e');
+      rethrow;
     }
   }
 
   @override
   Future<void> updateIssue(Issue issue) async {
+    print('[HttpIssueRepository] Memanggil updateIssue() untuk ID: ${issue.id}');
     _invalidateCache();
 
     final String? localPath = issue.evide;
+    final url = '$baseUrl/issues/${issue.id}';
 
-    // Jika eviden berisi file lokal baru, lakukan upload via Multipart PUT
-    if (localPath != null && !localPath.startsWith('http') && localPath.isNotEmpty) {
-      var request = http.MultipartRequest('PUT', Uri.parse('$baseUrl/issues/${issue.id}'));
-      
-      request.fields['tgl'] = issue.tgl.toIso8601String();
-      request.fields['area'] = issue.area;
-      request.fields['kategori'] = issue.kategori;
-      request.fields['kode_issue'] = issue.kodeIssue;
-      request.fields['issue'] = issue.issue;
-      request.fields['tag_issue'] = issue.tagIssue;
-      request.fields['penanganan'] = issue.penanganan;
-      request.fields['status'] = issue.status;
-      request.fields['lama_perbaikan'] = issue.lamaPerbaikan.toString();
-      request.fields['penyebab'] = issue.penyebab;
-      request.fields['month'] = _getMonthString(issue.tgl);
+    try {
+      if (localPath != null && !localPath.startsWith('http') && localPath.isNotEmpty) {
+        print('[HttpIssueRepository] Mengirim Multipart PUT (dengan file gambar baru) ke: $url');
+        
+        var request = http.MultipartRequest('PUT', Uri.parse(url));
+        
+        request.fields['tgl'] = issue.tgl.toIso8601String();
+        request.fields['area'] = issue.area;
+        request.fields['kategori'] = issue.kategori;
+        request.fields['kode_issue'] = issue.kodeIssue;
+        request.fields['issue'] = issue.issue;
+        request.fields['tag_issue'] = issue.tagIssue;
+        request.fields['penanganan'] = issue.penanganan;
+        request.fields['status'] = issue.status;
+        request.fields['lama_perbaikan'] = issue.lamaPerbaikan.toString();
+        request.fields['penyebab'] = issue.penyebab;
+        request.fields['month'] = _getMonthString(issue.tgl);
 
-      request.files.add(await http.MultipartFile.fromPath('evide', localPath));
+        print('[HttpIssueRepository] Melampirkan file gambar baru: $localPath');
+        request.files.add(await http.MultipartFile.fromPath('evide', localPath));
 
-      var streamedResponse = await request.send();
-      var response = await http.Response.fromStream(streamedResponse);
+        var streamedResponse = await request.send().timeout(const Duration(seconds: 15));
+        var response = await http.Response.fromStream(streamedResponse);
 
-      if (response.statusCode != 200) {
-        throw Exception('Gagal memperbarui kendala dengan gambar baru.');
+        print('[HttpIssueRepository] Multipart PUT respons diterima. Status: ${response.statusCode}');
+        if (response.statusCode != 200) {
+          throw Exception('Gagal memperbarui data di server: ${response.body}');
+        }
+      } else {
+        print('[HttpIssueRepository] Mengirim JSON PUT ke: $url');
+        
+        final bodyMap = issue.toMap();
+        bodyMap['month'] = _getMonthString(issue.tgl);
+
+        final response = await http.put(
+          Uri.parse(url),
+          headers: {'Content-Type': 'application/json'},
+          body: json.encode(bodyMap),
+        ).timeout(const Duration(seconds: 8));
+
+        print('[HttpIssueRepository] Respons diterima. Status: ${response.statusCode}');
+        if (response.statusCode != 200) {
+          throw Exception('Gagal memperbarui data di server: ${response.body}');
+        }
       }
-    } else {
-      // Kirim PUT JSON biasa
-      final bodyMap = issue.toMap();
-      bodyMap['month'] = _getMonthString(issue.tgl);
-
-      final response = await http.put(
-        Uri.parse('$baseUrl/issues/${issue.id}'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode(bodyMap),
-      );
-
-      if (response.statusCode != 200) {
-        throw Exception('Gagal memperbarui kendala.');
-      }
+    } catch (e) {
+      print('[HttpIssueRepository EXCEPTION] Gagal memperbarui data: $e');
+      rethrow;
     }
   }
 
   @override
   Future<void> deleteIssue(int id) async {
+    print('[HttpIssueRepository] Memanggil deleteIssue(id: $id)');
     _invalidateCache();
 
-    final response = await http.delete(Uri.parse('$baseUrl/issues/$id'));
-    if (response.statusCode != 200) {
-      throw Exception('Gagal menghapus kendala.');
+    final url = '$baseUrl/issues/$id';
+    print('[HttpIssueRepository] Mengirim HTTP DELETE ke: $url');
+    
+    try {
+      final response = await http.delete(Uri.parse(url)).timeout(const Duration(seconds: 8));
+      print('[HttpIssueRepository] Respons diterima. Status: ${response.statusCode}');
+      if (response.statusCode != 200) {
+        throw Exception('Gagal menghapus kendala di server: ${response.body}');
+      }
+    } catch (e) {
+      print('[HttpIssueRepository EXCEPTION] Gagal melakukan request delete: $e');
+      rethrow;
     }
   }
 
   @override
   Future<void> importIssues(List<Issue> issues) async {
+    print('[HttpIssueRepository] Memanggil importIssues() untuk ${issues.length} data.');
     _invalidateCache();
-    
-    // Kirim secara sequential/loop
     for (var issue in issues) {
       await insertIssue(issue);
     }
@@ -225,9 +291,8 @@ class HttpIssueRepository implements IssueRepository {
 
   @override
   Future<void> clearAllIssues() async {
+    print('[HttpIssueRepository] Memanggil clearAllIssues().');
     _invalidateCache();
-    // Di SQLite server, cara paling gampang hapus satu persatu atau buat custom endpoint.
-    // Demi kehandalan, panggil endpoint delete untuk semua item.
     final List<Issue> current = await getAllIssues();
     for (var issue in current) {
       if (issue.id != null) {
@@ -238,6 +303,7 @@ class HttpIssueRepository implements IssueRepository {
 
   @override
   Future<Map<String, dynamic>> getDashboardMetrics() async {
+    print('[HttpIssueRepository] Memanggil getDashboardMetrics()');
     final List<Issue> all = await getAllIssues();
     
     final total = all.length;
@@ -316,7 +382,6 @@ class HttpIssueRepository implements IssueRepository {
     return sortedList;
   }
 
-  // Helper untuk mendapatkan nama bulan dari DateTime
   String _getMonthString(DateTime date) {
     const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
     if (date.month >= 1 && date.month <= 12) {
