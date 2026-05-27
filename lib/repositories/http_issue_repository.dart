@@ -7,6 +7,7 @@ import 'issue_repository.dart';
 /// A robust REST HTTP implementation of the IssueRepository interface.
 /// Connects to the standalone Express & SQLite backend server.
 /// Features a memory-cache layer, transparent multipart file upload, and verbose debug logging.
+/// Includes the 'ngrok-skip-browser-warning': 'true' header to bypass Ngrok's interstitial warning pages.
 class HttpIssueRepository implements IssueRepository {
   // Base URL of the standalone backend server
   final String baseUrl;
@@ -20,6 +21,14 @@ class HttpIssueRepository implements IssueRepository {
   bool _isCacheDirty = true;
   DateTime? _lastFetchTime;
   static const Duration _cacheDuration = Duration(minutes: 2);
+
+  // Helper request headers for Ngrok bypass & JSON
+  Map<String, String> _getHeaders({bool isJson = false}) {
+    return {
+      if (isJson) 'Content-Type': 'application/json',
+      'ngrok-skip-browser-warning': 'true', // MEM-BYPASS INTERSTITIAL WARNING NGROK FREE
+    };
+  }
 
   // Helper to invalidate cache on mutations
   void _invalidateCache() {
@@ -42,7 +51,11 @@ class HttpIssueRepository implements IssueRepository {
       print('[HttpIssueRepository] Melakukan HTTP GET ke server: $url');
       
       try {
-        final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 8));
+        final response = await http.get(
+          Uri.parse(url),
+          headers: _getHeaders(),
+        ).timeout(const Duration(seconds: 30));
+        
         print('[HttpIssueRepository] Respons diterima. Status HTTP: ${response.statusCode}');
         
         if (response.statusCode == 200) {
@@ -112,7 +125,11 @@ class HttpIssueRepository implements IssueRepository {
     print('[HttpIssueRepository] Melakukan HTTP GET ke detail: $url');
     
     try {
-      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 8));
+      final response = await http.get(
+        Uri.parse(url),
+        headers: _getHeaders(),
+      ).timeout(const Duration(seconds: 30));
+      
       if (response.statusCode == 200) {
         print('[HttpIssueRepository] Detail ID $id berhasil ditemukan di server.');
         return Issue.fromMap(json.decode(response.body) as Map<String, dynamic>);
@@ -145,6 +162,7 @@ class HttpIssueRepository implements IssueRepository {
         print('[HttpIssueRepository] Mengirim Multipart POST (dengan file lokal) ke: $url');
         
         var request = http.MultipartRequest('POST', Uri.parse(url));
+        request.headers.addAll(_getHeaders());
         
         request.fields['tgl'] = finalIssue.tgl.toIso8601String();
         request.fields['area'] = finalIssue.area;
@@ -161,7 +179,7 @@ class HttpIssueRepository implements IssueRepository {
         print('[HttpIssueRepository] Melampirkan file gambar: $localPath');
         request.files.add(await http.MultipartFile.fromPath('evide', localPath));
 
-        var streamedResponse = await request.send().timeout(const Duration(seconds: 15));
+        var streamedResponse = await request.send().timeout(const Duration(seconds: 30));
         var response = await http.Response.fromStream(streamedResponse);
 
         print('[HttpIssueRepository] Multipart respons diterima. Status: ${response.statusCode}');
@@ -182,9 +200,9 @@ class HttpIssueRepository implements IssueRepository {
 
         final response = await http.post(
           Uri.parse(url),
-          headers: {'Content-Type': 'application/json'},
+          headers: _getHeaders(isJson: true),
           body: json.encode(bodyMap),
-        ).timeout(const Duration(seconds: 8));
+        ).timeout(const Duration(seconds: 30));
 
         print('[HttpIssueRepository] Respons diterima. Status: ${response.statusCode}');
         if (response.statusCode == 201) {
@@ -214,6 +232,7 @@ class HttpIssueRepository implements IssueRepository {
         print('[HttpIssueRepository] Mengirim Multipart PUT (dengan file gambar baru) ke: $url');
         
         var request = http.MultipartRequest('PUT', Uri.parse(url));
+        request.headers.addAll(_getHeaders());
         
         request.fields['tgl'] = issue.tgl.toIso8601String();
         request.fields['area'] = issue.area;
@@ -230,7 +249,7 @@ class HttpIssueRepository implements IssueRepository {
         print('[HttpIssueRepository] Melampirkan file gambar baru: $localPath');
         request.files.add(await http.MultipartFile.fromPath('evide', localPath));
 
-        var streamedResponse = await request.send().timeout(const Duration(seconds: 15));
+        var streamedResponse = await request.send().timeout(const Duration(seconds: 30));
         var response = await http.Response.fromStream(streamedResponse);
 
         print('[HttpIssueRepository] Multipart PUT respons diterima. Status: ${response.statusCode}');
@@ -245,9 +264,9 @@ class HttpIssueRepository implements IssueRepository {
 
         final response = await http.put(
           Uri.parse(url),
-          headers: {'Content-Type': 'application/json'},
+          headers: _getHeaders(isJson: true),
           body: json.encode(bodyMap),
-        ).timeout(const Duration(seconds: 8));
+        ).timeout(const Duration(seconds: 30));
 
         print('[HttpIssueRepository] Respons diterima. Status: ${response.statusCode}');
         if (response.statusCode != 200) {
@@ -269,7 +288,11 @@ class HttpIssueRepository implements IssueRepository {
     print('[HttpIssueRepository] Mengirim HTTP DELETE ke: $url');
     
     try {
-      final response = await http.delete(Uri.parse(url)).timeout(const Duration(seconds: 8));
+      final response = await http.delete(
+        Uri.parse(url),
+        headers: _getHeaders(),
+      ).timeout(const Duration(seconds: 30));
+      
       print('[HttpIssueRepository] Respons diterima. Status: ${response.statusCode}');
       if (response.statusCode != 200) {
         throw Exception('Gagal menghapus kendala di server: ${response.body}');
@@ -303,47 +326,92 @@ class HttpIssueRepository implements IssueRepository {
 
   @override
   Future<Map<String, dynamic>> getDashboardMetrics() async {
-    print('[HttpIssueRepository] Memanggil getDashboardMetrics()');
-    final List<Issue> all = await getAllIssues();
-    
-    final total = all.length;
-    if (total == 0) {
+    print('[HttpIssueRepository] Memanggil getDashboardMetrics() via /api/dashboard');
+
+    final url = '$baseUrl/dashboard';
+    print('[HttpIssueRepository] Melakukan HTTP GET ke: $url');
+
+    try {
+      final response = await http.get(
+        Uri.parse(url),
+        headers: _getHeaders(),
+      ).timeout(const Duration(seconds: 30));
+
+      print('[HttpIssueRepository] Dashboard respons diterima. Status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> serverData = json.decode(response.body) as Map<String, dynamic>;
+
+        // Parse server response into the format dashboard_screen.dart expects
+        final total = serverData['total'] as int? ?? 0;
+        final solved = serverData['solved'] as int? ?? 0;
+        final pending = serverData['pending'] as int? ?? 0;
+        final incomplete = serverData['incomplete'] as int? ?? 0;
+
+        // byArea & byKategori come as {String: int} maps from server
+        final Map<String, int> byArea = {};
+        if (serverData['byArea'] is Map) {
+          (serverData['byArea'] as Map).forEach((k, v) {
+            byArea[k.toString()] = (v is int) ? v : int.tryParse(v.toString()) ?? 0;
+          });
+        }
+        final Map<String, int> byKategori = {};
+        if (serverData['byKategori'] is Map) {
+          (serverData['byKategori'] as Map).forEach((k, v) {
+            byKategori[k.toString()] = (v is int) ? v : int.tryParse(v.toString()) ?? 0;
+          });
+        }
+
+        // longestPending come as List<Map> from server
+        final List<Issue> longestPending = [];
+        if (serverData['longestPending'] is List) {
+          for (var item in serverData['longestPending']) {
+            longestPending.add(Issue.fromMap(item as Map<String, dynamic>));
+          }
+        }
+
+        print('[HttpIssueRepository] Dashboard: total=$total, solved=$solved, pending=$pending, incomplete=$incomplete');
+
+        return {
+          'total': total,
+          'solved': solved,
+          'pending': pending,
+          'incomplete': incomplete,
+          'byArea': byArea,
+          'byKategori': byKategori,
+          'byPenanganan': <String, int>{},
+          'longestPending': longestPending,
+        };
+      } else {
+        print('[HttpIssueRepository ERROR] Dashboard endpoint error: ${response.statusCode}');
+        throw Exception('Gagal mengambil dashboard metrics: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('[HttpIssueRepository EXCEPTION] Dashboard gagal: $e');
+      // Fallback: hitung dari getAllIssues jika endpoint dashboard tidak tersedia
+      print('[HttpIssueRepository] Fallback: menghitung dari getAllIssues...');
+      final List<Issue> all = await getAllIssues();
+      final total = all.length;
+      final solved = all.where((e) => e.status.toLowerCase() == 'solved').length;
+      final pending = total - solved;
+      final Map<String, int> byArea = {};
+      final Map<String, int> byKategori = {};
+      for (var issue in all) {
+        byArea[issue.area] = (byArea[issue.area] ?? 0) + 1;
+        byKategori[issue.kategori] = (byKategori[issue.kategori] ?? 0) + 1;
+      }
+      final longestPending = all.where((e) => e.status.toLowerCase() == 'pending').toList()
+        ..sort((a, b) => b.lamaPerbaikan.compareTo(a.lamaPerbaikan));
       return {
-        'total': 0,
-        'solved': 0,
-        'pending': 0,
-        'byArea': <String, int>{},
-        'byKategori': <String, int>{},
+        'total': total,
+        'solved': solved,
+        'pending': pending,
+        'byArea': byArea,
+        'byKategori': byKategori,
         'byPenanganan': <String, int>{},
-        'longestPending': <Issue>[],
+        'longestPending': longestPending.take(5).toList(),
       };
     }
-
-    final solved = all.where((element) => element.status.toLowerCase() == 'solved').length;
-    final pending = total - solved;
-
-    final Map<String, int> byArea = {};
-    final Map<String, int> byKategori = {};
-    final Map<String, int> byPenanganan = {};
-
-    for (var issue in all) {
-      byArea[issue.area] = (byArea[issue.area] ?? 0) + 1;
-      byKategori[issue.kategori] = (byKategori[issue.kategori] ?? 0) + 1;
-      byPenanganan[issue.penanganan] = (byPenanganan[issue.penanganan] ?? 0) + 1;
-    }
-
-    final longestPending = all.where((element) => element.status.toLowerCase() == 'pending').toList();
-    longestPending.sort((a, b) => b.lamaPerbaikan.compareTo(a.lamaPerbaikan));
-
-    return {
-      'total': total,
-      'solved': solved,
-      'pending': pending,
-      'byArea': byArea,
-      'byKategori': byKategori,
-      'byPenanganan': byPenanganan,
-      'longestPending': longestPending.take(5).toList(),
-    };
   }
 
   @override

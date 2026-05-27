@@ -27,16 +27,41 @@ class _DashboardScreenState extends State<DashboardScreen> {
     setState(() {
       _isLoading = true;
     });
-    final data = await widget.repository.getDashboardMetrics();
-    
-    // Fetch incomplete count
-    final incompleteList = await widget.repository.getAllIssues(incompleteOnly: true);
-    
-    setState(() {
-      _metrics = data;
-      _incompleteCount = incompleteList.length;
-      _isLoading = false;
-    });
+    try {
+      final data = await widget.repository.getDashboardMetrics();
+      
+      // Use pre-computed incomplete count from server if available
+      final incompleteFromServer = data['incomplete'] as int?;
+      
+      int incompleteCount = 0;
+      if (incompleteFromServer != null) {
+        incompleteCount = incompleteFromServer;
+      } else {
+        // Fallback: fetch incomplete list the old way
+        final incompleteList = await widget.repository.getAllIssues(incompleteOnly: true);
+        incompleteCount = incompleteList.length;
+      }
+      
+      setState(() {
+        _metrics = data;
+        _incompleteCount = incompleteCount;
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('[DashboardScreen] Error loading dashboard: $e');
+      setState(() {
+        _isLoading = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal memuat dashboard: $e'),
+            backgroundColor: Colors.red.shade700,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    }
   }
 
   @override
