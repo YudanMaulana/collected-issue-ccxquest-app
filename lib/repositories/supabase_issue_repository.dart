@@ -235,18 +235,18 @@ class SupabaseIssueRepository implements IssueRepository {
               .difference(DateTime(prevIssue.tgl.year, prevIssue.tgl.month, prevIssue.tgl.day))
               .inDays;
           if (diff == 1) {
-            finalDuration = prevIssue.lamaPerbaikan + 1;
+            finalDuration = prevIssue.perulanganMasalah + 1;
           } else if (diff == 0) {
-            finalDuration = prevIssue.lamaPerbaikan;
+            finalDuration = prevIssue.perulanganMasalah;
           }
         }
       }
 
-      if (issue.lamaPerbaikan != finalDuration) {
-        await _client.from('issues').update({'lama_perbaikan': finalDuration}).eq('id', issue.id!);
+      if (issue.perulanganMasalah != finalDuration) {
+        await _client.from('issues').update({'perulangan_masalah': finalDuration}).eq('id', issue.id!);
       }
       
-      lastSeenPending[key] = issue.copyWith(lamaPerbaikan: finalDuration);
+      lastSeenPending[key] = issue.copyWith(perulanganMasalah: finalDuration);
     }
   }
 
@@ -283,7 +283,7 @@ class SupabaseIssueRepository implements IssueRepository {
     }
 
     final longestPending = all.where((element) => element.status == 'pending').toList();
-    longestPending.sort((a, b) => b.lamaPerbaikan.compareTo(a.lamaPerbaikan));
+    longestPending.sort((a, b) => b.perulanganMasalah.compareTo(a.perulanganMasalah));
 
     return {
       'total': total,

@@ -42,15 +42,15 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
   String _currentKodeIssue = '';
 
   final List<String> _areas = [
-    'All Wahana',
-    'Innovation Station',
-    'Innovation Train',
-    'Clevo Station',
-    'Clevo X-DREAMSPACE',
-    'Tunnel',
-    'Chamber Ai',
-    'Chocolatos Briefing Room',
-    'X-Gondola'
+    'ALL WAHANA',
+    'INNOVATION STATION',
+    'INNOVATION TRAIN',
+    'CLEVO STATION',
+    'CLEVO X-DREAMSPACE',
+    'TUNNEL',
+    'CHAMBER AI',
+    'CHOCOLATOS BRIEFING ROOM',
+    'X-GONDOLA'
   ];
 
   final List<String> _kategoris = ['SISTEM', 'ASSET'];
@@ -261,7 +261,7 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
       issue: _issueController.text.trim(),
       penanganan: _penangananController.text.trim(),
       status: _selectedStatus,
-      lamaPerbaikan: widget.issue?.lamaPerbaikan ?? 1,
+      perulanganMasalah: widget.issue?.perulanganMasalah ?? 1,
       penyebab: _penyebabController.text.trim(),
       evide: _evidencePath,
       kodeIssue: _currentKodeIssue,

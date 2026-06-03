@@ -298,7 +298,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             child: Column(
                               children: [
                                 Text(
-                                  '${issue.lamaPerbaikan}',
+                                  '${issue.perulanganMasalah}',
                                   style: const TextStyle(
                                     color: AppTheme.statusPending,
                                     fontSize: 18,

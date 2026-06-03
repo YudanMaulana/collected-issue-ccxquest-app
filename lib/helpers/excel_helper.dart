@@ -101,7 +101,7 @@ class ExcelHelper {
           issue: issueVal,
           penanganan: penangananVal,
           status: statusVal,
-          lamaPerbaikan: lamaVal,
+          perulanganMasalah: lamaVal,
           penyebab: penyebabVal,
           evide: evideVal.isNotEmpty ? evideVal : null,
           tagIssue: tagVal.isNotEmpty ? tagVal : Issue.calculateTag(issueVal),
@@ -160,7 +160,7 @@ class ExcelHelper {
         issue.issue,
         issue.penanganan,
         issue.status,
-        '${issue.lamaPerbaikan} hari',
+        '${issue.perulanganMasalah} hari',
         issue.penyebab,
         issue.evide ?? ''
       ];

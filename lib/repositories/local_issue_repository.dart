@@ -30,7 +30,7 @@ class LocalIssueRepository implements IssueRepository {
             issue TEXT NOT NULL,
             penanganan TEXT NOT NULL,
             status TEXT NOT NULL,
-            lama_perbaikan INTEGER NOT NULL,
+            perulangan_masalah INTEGER NOT NULL,
             penyebab TEXT NOT NULL,
             evide TEXT,
             tag_issue TEXT,
@@ -296,10 +296,10 @@ class LocalIssueRepository implements IssueRepository {
           
           if (diff == 1) {
             // Consecutive day: increment
-            finalDuration = prevIssue.lamaPerbaikan + 1;
+            finalDuration = prevIssue.perulanganMasalah + 1;
           } else if (diff == 0) {
             // Same day entry: inherits previous duration
-            finalDuration = prevIssue.lamaPerbaikan;
+            finalDuration = prevIssue.perulanganMasalah;
           } else {
             // Not consecutive: reset to 1
             finalDuration = 1;
@@ -310,12 +310,12 @@ class LocalIssueRepository implements IssueRepository {
       // If status is solved, we still inherit the chain length, but it stops accumulating
       // (this is what they would expect: e.g. Day 1, 2, 3 pending, Day 4 solved = 4 days total perbaikan)
       
-      final updatedIssue = issue.copyWith(lamaPerbaikan: finalDuration);
+      final updatedIssue = issue.copyWith(perulanganMasalah: finalDuration);
       
       // Update in DB
       batch.update(
         'issues',
-        {'lama_perbaikan': finalDuration},
+        {'perulangan_masalah': finalDuration},
         where: 'id = ?',
         whereArgs: [issue.id],
       );
@@ -375,7 +375,7 @@ class LocalIssueRepository implements IssueRepository {
 
     // Longest Pending Issues
     final longestMaps = await db.rawQuery(
-      "SELECT * FROM issues WHERE status = 'pending' ORDER BY lama_perbaikan DESC, tgl ASC LIMIT 5"
+      "SELECT * FROM issues WHERE status = 'pending' ORDER BY perulangan_masalah DESC, tgl ASC LIMIT 5"
     );
     final longestPending = longestMaps.map((m) => Issue.fromMap(m)).toList();
 

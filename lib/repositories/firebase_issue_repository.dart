@@ -131,14 +131,14 @@ class FirebaseIssueRepository implements IssueRepository {
               .difference(DateTime(prevIssue.tgl.year, prevIssue.tgl.month, prevIssue.tgl.day))
               .inDays;
           if (diff == 1) {
-            finalDuration = prevIssue.lamaPerbaikan + 1;
+            finalDuration = prevIssue.perulanganMasalah + 1;
           } else if (diff == 0) {
-            finalDuration = prevIssue.lamaPerbaikan;
+            finalDuration = prevIssue.perulanganMasalah;
           }
         }
       }
 
-      _mockFirebaseStorage[i] = issue.copyWith(lamaPerbaikan: finalDuration);
+      _mockFirebaseStorage[i] = issue.copyWith(perulanganMasalah: finalDuration);
       lastSeenPending[key] = _mockFirebaseStorage[i];
     }
   }
@@ -174,7 +174,7 @@ class FirebaseIssueRepository implements IssueRepository {
     final longestPending = _mockFirebaseStorage
         .where((element) => element.status == 'pending')
         .toList();
-    longestPending.sort((a, b) => b.lamaPerbaikan.compareTo(a.lamaPerbaikan));
+    longestPending.sort((a, b) => b.perulanganMasalah.compareTo(a.perulanganMasalah));
 
     return {
       'total': total,

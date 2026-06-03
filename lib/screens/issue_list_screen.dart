@@ -613,7 +613,7 @@ class _IssueListScreenState extends State<IssueListScreen> {
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
-                      '${issue.lamaPerbaikan} Hari',
+                      '${issue.perulanganMasalah} Hari',
                       style: const TextStyle(
                         color: AppTheme.textSecondary,
                         fontSize: 10,

@@ -150,8 +150,28 @@ class HttpIssueRepository implements IssueRepository {
 
     Issue finalIssue = issue;
     if (issue.kodeIssue.isEmpty) {
-      final code = await generateNextIssueCode();
-      finalIssue = issue.copyWith(kodeIssue: code);
+      // Auto-match: cek apakah issue text yang sama sudah punya kode
+      String? matchedCode;
+      try {
+        final allIssues = await getAllIssues();
+        final issueTextLower = issue.issue.trim().toLowerCase();
+        for (var existing in allIssues) {
+          if (existing.kodeIssue.isNotEmpty &&
+              existing.issue.trim().toLowerCase() == issueTextLower) {
+            matchedCode = existing.kodeIssue;
+            break;
+          }
+        }
+      } catch (_) {}
+
+      if (matchedCode != null) {
+        print('[HttpIssueRepository] Auto-match: issue serupa ditemukan, pakai kode $matchedCode');
+        finalIssue = issue.copyWith(kodeIssue: matchedCode);
+      } else {
+        final code = await generateNextIssueCode();
+        print('[HttpIssueRepository] Issue baru, generate kode: $code');
+        finalIssue = issue.copyWith(kodeIssue: code);
+      }
     }
 
     final String? localPath = finalIssue.evide;
@@ -172,7 +192,7 @@ class HttpIssueRepository implements IssueRepository {
         request.fields['tag_issue'] = finalIssue.tagIssue;
         request.fields['penanganan'] = finalIssue.penanganan;
         request.fields['status'] = finalIssue.status;
-        request.fields['lama_perbaikan'] = finalIssue.lamaPerbaikan.toString();
+        request.fields['perulangan_masalah'] = finalIssue.perulanganMasalah.toString();
         request.fields['penyebab'] = finalIssue.penyebab;
         request.fields['month'] = _getMonthString(finalIssue.tgl);
 
@@ -242,7 +262,7 @@ class HttpIssueRepository implements IssueRepository {
         request.fields['tag_issue'] = issue.tagIssue;
         request.fields['penanganan'] = issue.penanganan;
         request.fields['status'] = issue.status;
-        request.fields['lama_perbaikan'] = issue.lamaPerbaikan.toString();
+        request.fields['perulangan_masalah'] = issue.perulanganMasalah.toString();
         request.fields['penyebab'] = issue.penyebab;
         request.fields['month'] = _getMonthString(issue.tgl);
 
@@ -401,7 +421,7 @@ class HttpIssueRepository implements IssueRepository {
         byKategori[issue.kategori] = (byKategori[issue.kategori] ?? 0) + 1;
       }
       final longestPending = all.where((e) => e.status.toLowerCase() == 'pending').toList()
-        ..sort((a, b) => b.lamaPerbaikan.compareTo(a.lamaPerbaikan));
+        ..sort((a, b) => b.perulanganMasalah.compareTo(a.perulanganMasalah));
       return {
         'total': total,
         'solved': solved,
@@ -420,15 +440,15 @@ class HttpIssueRepository implements IssueRepository {
     int maxNum = 0;
     for (var item in all) {
       final String code = item.kodeIssue;
-      if (code.startsWith('ISS-')) {
-        final String numStr = code.replaceFirst('ISS-', '');
+      if (code.startsWith('CI')) {
+        final String numStr = code.replaceFirst('CI', '');
         final int? num = int.tryParse(numStr);
         if (num != null && num > maxNum) {
           maxNum = num;
         }
       }
     }
-    return 'ISS-${(maxNum + 1).toString().padLeft(3, '0')}';
+    return 'CI${(maxNum + 1).toString().padLeft(3, '0')}';
   }
 
   @override
