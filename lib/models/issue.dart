@@ -8,7 +8,7 @@ class Issue {
   final String issue;
   final String penanganan;
   final String status; // 'pending' or 'solved'
-  final int lamaPerbaikan;
+  final int perulanganMasalah;
   final String penyebab;
   final String? evide; // URL or local path
   final String tagIssue; // Auto-calculated tag
@@ -22,7 +22,7 @@ class Issue {
     required this.issue,
     required this.penanganan,
     required this.status,
-    required this.lamaPerbaikan,
+    required this.perulanganMasalah,
     required this.penyebab,
     this.evide,
     String? tagIssue,
@@ -104,7 +104,7 @@ class Issue {
 
   // Format DateTime to TGL string
   String get tglFormatted {
-    return DateFormat('EEEE, dd MMMM yyyy').format(tgl);
+    return DateFormat('EEEE, dd MMMM yyyy').format(tgl.toLocal());
   }
 
   Issue copyWith({
@@ -115,7 +115,7 @@ class Issue {
     String? issue,
     String? penanganan,
     String? status,
-    int? lamaPerbaikan,
+    int? perulanganMasalah,
     String? penyebab,
     String? evide,
     String? tagIssue,
@@ -129,7 +129,7 @@ class Issue {
       issue: issue ?? this.issue,
       penanganan: penanganan ?? this.penanganan,
       status: status ?? this.status,
-      lamaPerbaikan: lamaPerbaikan ?? this.lamaPerbaikan,
+      perulanganMasalah: perulanganMasalah ?? this.perulanganMasalah,
       penyebab: penyebab ?? this.penyebab,
       evide: evide ?? this.evide,
       tagIssue: tagIssue ?? this.tagIssue,
@@ -146,7 +146,7 @@ class Issue {
       'issue': issue,
       'penanganan': penanganan,
       'status': status,
-      'lama_perbaikan': lamaPerbaikan,
+      'perulangan_masalah': perulanganMasalah,
       'penyebab': penyebab,
       'evide': evide,
       'tag_issue': tagIssue,
@@ -156,6 +156,13 @@ class Issue {
 
   factory Issue.fromMap(Map<String, dynamic> map) {
     final issueText = (map['issue'] ?? map['ISSUE/KENDALA'] ?? map['ISSUE\/KENDALA'] ?? '') as String;
+    
+    // Parse perulangan_masalah with legacy fallback to lama_perbaikan and LAMA PERBAIKAN
+    final rawPerulangan = map['perulangan_masalah'] ?? map['lama_perbaikan'] ?? map['LAMA PERBAIKAN'] ?? 1;
+    final int parsedPerulangan = rawPerulangan is int 
+        ? rawPerulangan 
+        : int.tryParse(rawPerulangan.toString().replaceAll(RegExp(r'\D'), '')) ?? 1;
+
     return Issue(
       id: map['id'] as int?,
       tgl: map['tgl'] != null ? DateTime.parse(map['tgl'] as String) : DateTime.now(),
@@ -164,9 +171,7 @@ class Issue {
       issue: issueText,
       penanganan: (map['penanganan'] ?? map['PENANGANAN VENDOR'] ?? '') as String,
       status: (map['status'] ?? map['STATUS PERBAIKAN'] ?? 'pending') as String,
-      lamaPerbaikan: (map['lama_perbaikan'] ?? map['LAMA PERBAIKAN'] ?? 1) is int 
-          ? (map['lama_perbaikan'] ?? map['LAMA PERBAIKAN'] ?? 1) as int
-          : int.tryParse((map['lama_perbaikan'] ?? map['LAMA PERBAIKAN'] ?? '1').toString().replaceAll(RegExp(r'\D'), '')) ?? 1,
+      perulanganMasalah: parsedPerulangan,
       penyebab: (map['penyebab'] ?? map['PENYEBAB'] ?? '') as String,
       evide: (map['evide'] ?? map['EVIDE'] ?? map['eviden']) as String?,
       tagIssue: (map['tag_issue'] ?? map['TAG ISSUE'] ?? map['TAG\u0020ISSUE']) as String?,

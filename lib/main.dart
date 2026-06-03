@@ -78,6 +78,30 @@ class _MainAuthGatewayState extends State<MainAuthGateway> {
         title: Text(_currentIndex == 0 ? 'DASHBOARD' : 'ISSUES RECORD'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.cached_rounded, color: AppTheme.accentYellow),
+            tooltip: 'Hapus Cache & Refresh',
+            onPressed: () {
+              // 1. Clear memory & persistent cache
+              widget.repository.clearCache();
+              
+              // 2. Re-create screen states to force a clean re-initialization
+              setState(() {
+                _screens = [
+                  DashboardScreen(repository: widget.repository),
+                  IssueListScreen(repository: widget.repository),
+                ];
+              });
+              
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Cache berhasil dihapus! Memuat ulang data baru dari server...'),
+                  backgroundColor: AppTheme.statusSolved,
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.lock_open, color: AppTheme.accentYellow),
             onPressed: () {
               // Quick Lock

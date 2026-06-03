@@ -19,7 +19,7 @@ class LocalIssueRepository implements IssueRepository {
 
     return await openDatabase(
       pathString,
-      version: 3,
+      version: 4,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE issues (
@@ -30,7 +30,7 @@ class LocalIssueRepository implements IssueRepository {
             issue TEXT NOT NULL,
             penanganan TEXT NOT NULL,
             status TEXT NOT NULL,
-            lama_perbaikan INTEGER NOT NULL,
+            perulangan_masalah INTEGER NOT NULL DEFAULT 1,
             penyebab TEXT NOT NULL,
             evide TEXT,
             tag_issue TEXT,
@@ -49,6 +49,15 @@ class LocalIssueRepository implements IssueRepository {
             await db.execute('ALTER TABLE issues ADD COLUMN kode_issue TEXT');
           } catch (_) {}
           await _populateLegacyCodes(db);
+        }
+        if (oldVersion < 4) {
+          try {
+            await db.execute('ALTER TABLE issues RENAME COLUMN lama_perbaikan TO perulangan_masalah');
+          } catch (_) {
+            try {
+              await db.execute('ALTER TABLE issues ADD COLUMN perulangan_masalah INTEGER DEFAULT 1');
+            } catch (_) {}
+          }
         }
       },
     );
@@ -148,6 +157,29 @@ class LocalIssueRepository implements IssueRepository {
       finalIssue = issue.copyWith(kodeIssue: code);
     }
 
+    // Auto-sync evidence photo for the same issue code
+    if (finalIssue.kodeIssue.isNotEmpty) {
+      if (finalIssue.evide == null || finalIssue.evide!.isEmpty) {
+        final List<Map<String, dynamic>> existing = await db.query(
+          'issues',
+          columns: ['evide'],
+          where: 'kode_issue = ? AND evide IS NOT NULL AND evide != ""',
+          whereArgs: [finalIssue.kodeIssue],
+          limit: 1,
+        );
+        if (existing.isNotEmpty) {
+          finalIssue = finalIssue.copyWith(evide: existing.first['evide'] as String?);
+        }
+      } else {
+        await db.update(
+          'issues',
+          {'evide': finalIssue.evide},
+          where: 'kode_issue = ?',
+          whereArgs: [finalIssue.kodeIssue],
+        );
+      }
+    }
+
     final id = await db.insert(
       'issues',
       finalIssue.toMap(),
@@ -160,11 +192,35 @@ class LocalIssueRepository implements IssueRepository {
   @override
   Future<void> updateIssue(Issue issue) async {
     final db = await database;
+    
+    Issue finalIssue = issue;
+    if (finalIssue.kodeIssue.isNotEmpty) {
+      if (finalIssue.evide == null || finalIssue.evide!.isEmpty) {
+        final List<Map<String, dynamic>> existing = await db.query(
+          'issues',
+          columns: ['evide'],
+          where: 'kode_issue = ? AND evide IS NOT NULL AND evide != "" AND id != ?',
+          whereArgs: [finalIssue.kodeIssue, finalIssue.id],
+          limit: 1,
+        );
+        if (existing.isNotEmpty) {
+          finalIssue = finalIssue.copyWith(evide: existing.first['evide'] as String?);
+        }
+      } else {
+        await db.update(
+          'issues',
+          {'evide': finalIssue.evide},
+          where: 'kode_issue = ?',
+          whereArgs: [finalIssue.kodeIssue],
+        );
+      }
+    }
+
     await db.update(
       'issues',
-      issue.toMap(),
+      finalIssue.toMap(),
       where: 'id = ?',
-      whereArgs: [issue.id],
+      whereArgs: [finalIssue.id],
     );
     await recalculateDurations();
   }
@@ -225,35 +281,47 @@ class LocalIssueRepository implements IssueRepository {
   Future<String> generateNextIssueCode() async {
     final db = await database;
     final List<Map<String, dynamic>> result = await db.rawQuery(
-      "SELECT kode_issue FROM issues WHERE kode_issue LIKE 'ISS-%'"
+      "SELECT kode_issue FROM issues WHERE kode_issue IS NOT NULL AND kode_issue != ''"
     );
+    final uniqueCodes = result
+        .map((row) => (row['kode_issue'] ?? '').toString().trim().toUpperCase())
+        .where((code) => code.isNotEmpty)
+        .toSet();
+    
     int maxNum = 0;
-    for (var row in result) {
-      final String code = (row['kode_issue'] ?? '') as String;
-      final String numStr = code.replaceFirst('ISS-', '');
-      final int? num = int.tryParse(numStr);
-      if (num != null && num > maxNum) {
-        maxNum = num;
+    final regExp = RegExp(r'\d+');
+    for (var code in uniqueCodes) {
+      final match = regExp.firstMatch(code);
+      if (match != null) {
+        final num = int.tryParse(match.group(0)!) ?? 0;
+        if (num > maxNum) {
+          maxNum = num;
+        }
       }
     }
-    return 'ISS-${(maxNum + 1).toString().padLeft(3, '0')}';
+    
+    final nextNum = maxNum + 1;
+    return 'CI${nextNum.toString().padLeft(3, '0')}';
   }
 
   @override
   Future<List<Map<String, String>>> getUniqueIssues() async {
     final db = await database;
     final List<Map<String, dynamic>> result = await db.rawQuery('''
-      SELECT kode_issue, issue, kategori, penyebab 
-      FROM issues 
-      WHERE kode_issue IS NOT NULL AND kode_issue != ""
-      GROUP BY kode_issue
-      ORDER BY kode_issue ASC
+      SELECT t.kode_issue, t.issue, t.kategori, t.penyebab, t.area,
+             (SELECT evide FROM issues WHERE kode_issue = t.kode_issue AND evide IS NOT NULL AND evide != "" ORDER BY id DESC LIMIT 1) as evide
+      FROM issues t
+      WHERE t.kode_issue IS NOT NULL AND t.kode_issue != ""
+      GROUP BY t.kode_issue
+      ORDER BY t.kode_issue ASC
     ''');
     return result.map((row) => {
       'kode_issue': (row['kode_issue'] ?? '') as String,
       'issue': (row['issue'] ?? '') as String,
       'kategori': (row['kategori'] ?? '') as String,
       'penyebab': (row['penyebab'] ?? '') as String,
+      'area': (row['area'] ?? '') as String,
+      'evide': (row['evide'] ?? '') as String,
     }).toList();
   }
 
@@ -296,10 +364,10 @@ class LocalIssueRepository implements IssueRepository {
           
           if (diff == 1) {
             // Consecutive day: increment
-            finalDuration = prevIssue.lamaPerbaikan + 1;
+            finalDuration = prevIssue.perulanganMasalah + 1;
           } else if (diff == 0) {
             // Same day entry: inherits previous duration
-            finalDuration = prevIssue.lamaPerbaikan;
+            finalDuration = prevIssue.perulanganMasalah;
           } else {
             // Not consecutive: reset to 1
             finalDuration = 1;
@@ -308,14 +376,13 @@ class LocalIssueRepository implements IssueRepository {
       }
 
       // If status is solved, we still inherit the chain length, but it stops accumulating
-      // (this is what they would expect: e.g. Day 1, 2, 3 pending, Day 4 solved = 4 days total perbaikan)
       
-      final updatedIssue = issue.copyWith(lamaPerbaikan: finalDuration);
+      final updatedIssue = issue.copyWith(perulanganMasalah: finalDuration);
       
       // Update in DB
       batch.update(
         'issues',
-        {'lama_perbaikan': finalDuration},
+        {'perulangan_masalah': finalDuration},
         where: 'id = ?',
         whereArgs: [issue.id],
       );
@@ -373,11 +440,23 @@ class LocalIssueRepository implements IssueRepository {
       byPenanganan[m['penanganan'] as String] = m['count'] as int;
     }
 
-    // Longest Pending Issues
+    // Unique Issues (Distinct kode_issue count)
+    final uniqueResult = await db.rawQuery(
+      'SELECT COUNT(DISTINCT kode_issue) as count FROM issues WHERE kode_issue IS NOT NULL AND kode_issue != ""'
+    );
+    final uniqueIssuesCount = uniqueResult.first['count'] as int? ?? 0;
+
+    // Longest Pending Issues (ordered by recurrence count)
     final longestMaps = await db.rawQuery(
-      "SELECT * FROM issues WHERE status = 'pending' ORDER BY lama_perbaikan DESC, tgl ASC LIMIT 5"
+      "SELECT * FROM issues WHERE status = 'pending' ORDER BY perulangan_masalah DESC, tgl ASC LIMIT 5"
     );
     final longestPending = longestMaps.map((m) => Issue.fromMap(m)).toList();
+
+    // Last Updated Issues (Top 5 sorted by date descending)
+    final lastUpdatedMaps = await db.rawQuery(
+      "SELECT * FROM issues ORDER BY tgl DESC, id DESC LIMIT 5"
+    );
+    final lastUpdated = lastUpdatedMaps.map((m) => Issue.fromMap(m)).toList();
 
     return {
       'total': total,
@@ -387,6 +466,14 @@ class LocalIssueRepository implements IssueRepository {
       'byKategori': byKategori,
       'byPenanganan': byPenanganan,
       'longestPending': longestPending,
+      'lastUpdated': lastUpdated,
+      'uniqueIssuesCount': uniqueIssuesCount,
     };
+  }
+
+  @override
+  void clearCache() {
+    // SQLite local repository has no in-memory cache to clear
+    print('[LocalIssueRepository] clearCache called (no-op for direct SQLite database)');
   }
 }

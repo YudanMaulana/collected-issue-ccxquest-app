@@ -1,16 +1,20 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import '../models/issue.dart';
 import 'issue_repository.dart';
+import 'local_issue_repository.dart';
 
 /// A robust REST HTTP implementation of the IssueRepository interface.
 /// Connects to the standalone Express & SQLite backend server.
 /// Features a memory-cache layer, transparent multipart file upload, and verbose debug logging.
 /// Includes the 'ngrok-skip-browser-warning': 'true' header to bypass Ngrok's interstitial warning pages.
+/// Integrated with a local SQLite persistent cache fallback to ensure 100% offline-first reliability.
 class HttpIssueRepository implements IssueRepository {
   // Base URL of the standalone backend server
   final String baseUrl;
+  final LocalIssueRepository _localCache = LocalIssueRepository();
 
   HttpIssueRepository({this.baseUrl = 'http://77.78.88.3:5001/api'}) {
     print('[HttpIssueRepository] Inisialisasi dengan Base URL: $baseUrl');
@@ -54,7 +58,7 @@ class HttpIssueRepository implements IssueRepository {
         final response = await http.get(
           Uri.parse(url),
           headers: _getHeaders(),
-        ).timeout(const Duration(seconds: 30));
+        ).timeout(const Duration(seconds: 4)); // Fast timeout fallback to offline db
         
         print('[HttpIssueRepository] Respons diterima. Status HTTP: ${response.statusCode}');
         
@@ -65,16 +69,40 @@ class HttpIssueRepository implements IssueRepository {
           
           _lastFetchTime = DateTime.now();
           _isCacheDirty = false;
+
+          // Sync database lokal SQLite cache secara persistent
+          try {
+            await _localCache.clearAllIssues();
+            await _localCache.importIssues(_cachedIssues!);
+            print('[HttpIssueRepository] Berhasil sinkronisasi persistent local SQLite cache.');
+          } catch (cacheErr) {
+            print('[HttpIssueRepository WARNING] Gagal meng-update SQLite cache: $cacheErr');
+          }
         } else {
           print('[HttpIssueRepository ERROR] Server mengembalikan status error: ${response.statusCode} - ${response.body}');
           throw Exception('Gagal mengambil data dari server: ${response.statusCode}');
         }
       } catch (e) {
         print('[HttpIssueRepository EXCEPTION] GAGAL MENGHUBUNGI SERVER pada $url! Error: $e');
-        rethrow;
+        print('[HttpIssueRepository OFFLINE] Mengaktifkan mode offline, memuat data dari SQLite local cache.');
+        
+        // FALLBACK GRACEFUL KE SQLITE CACHE LOKAL
+        try {
+          final offlineIssues = await _localCache.getAllIssues(
+            search: search,
+            area: area,
+            kategori: kategori,
+            status: status,
+            incompleteOnly: incompleteOnly,
+          );
+          return offlineIssues;
+        } catch (dbErr) {
+          print('[HttpIssueRepository OFFLINE ERROR] Gagal membaca dari database SQLite cache: $dbErr');
+          rethrow;
+        }
       }
     } else {
-      print('[HttpIssueRepository] Menggunakan cache lokal (Usia cache: ${DateTime.now().difference(_lastFetchTime!).inSeconds} detik).');
+      print('[HttpIssueRepository] Menggunakan cache memori (Usia cache: ${DateTime.now().difference(_lastFetchTime!).inSeconds} detik).');
     }
 
     // 2. Perform local filtering
@@ -154,6 +182,15 @@ class HttpIssueRepository implements IssueRepository {
       finalIssue = issue.copyWith(kodeIssue: code);
     }
 
+    // 1. Simpan di local SQLite cache terlebih dahulu agar data tetap aman saat offline!
+    int? localId;
+    try {
+      localId = await _localCache.insertIssue(finalIssue);
+      print('[HttpIssueRepository] Berhasil menyimpan baru ke local SQLite cache (ID Lokal: $localId).');
+    } catch (dbErr) {
+      print('[HttpIssueRepository WARNING] Gagal menulis ke SQLite cache: $dbErr');
+    }
+
     final String? localPath = finalIssue.evide;
 
     try {
@@ -172,20 +209,36 @@ class HttpIssueRepository implements IssueRepository {
         request.fields['tag_issue'] = finalIssue.tagIssue;
         request.fields['penanganan'] = finalIssue.penanganan;
         request.fields['status'] = finalIssue.status;
-        request.fields['lama_perbaikan'] = finalIssue.lamaPerbaikan.toString();
+        request.fields['perulangan_masalah'] = finalIssue.perulanganMasalah.toString();
+        request.fields['lama_perbaikan'] = finalIssue.perulanganMasalah.toString();
         request.fields['penyebab'] = finalIssue.penyebab;
         request.fields['month'] = _getMonthString(finalIssue.tgl);
 
-        print('[HttpIssueRepository] Melampirkan file gambar: $localPath');
-        request.files.add(await http.MultipartFile.fromPath('evide', localPath));
+        final ext = localPath.split('.').last.toLowerCase();
+        final isVideo = ext == 'mp4' || ext == 'mov' || ext == 'avi' || ext == 'mkv' || ext == 'webm' || ext == '3gp';
+        print('[HttpIssueRepository] Melampirkan file ${isVideo ? 'video' : 'gambar'}: $localPath');
+        final mimeSub = (ext == 'png' || ext == 'webp' || ext == 'gif' || ext == 'heic' || ext == 'heif') ? ext : 'jpeg';
+        request.files.add(await http.MultipartFile.fromPath(
+          'evide',
+          localPath,
+          contentType: isVideo ? MediaType('video', ext) : MediaType('image', mimeSub),
+        ));
 
-        var streamedResponse = await request.send().timeout(const Duration(seconds: 30));
+        var streamedResponse = await request.send().timeout(const Duration(seconds: 120));
         var response = await http.Response.fromStream(streamedResponse);
 
         print('[HttpIssueRepository] Multipart respons diterima. Status: ${response.statusCode}');
         if (response.statusCode == 201) {
           final insertedJson = json.decode(response.body) as Map<String, dynamic>;
-          print('[HttpIssueRepository] Sukses menyimpan data. ID baru: ${insertedJson['id']}');
+          print('[HttpIssueRepository] Sukses menyimpan data ke server. ID baru: ${insertedJson['id']}');
+          
+          // Sinkronisasi ulang ID dari server ke database lokal
+          if (localId != null) {
+            try {
+              await _localCache.deleteIssue(localId);
+              await _localCache.insertIssue(finalIssue.copyWith(id: insertedJson['id'] as int));
+            } catch (_) {}
+          }
           return insertedJson['id'] as int;
         } else {
           throw Exception('Gagal menyimpan data ke server: ${response.body}');
@@ -197,24 +250,37 @@ class HttpIssueRepository implements IssueRepository {
         final bodyMap = finalIssue.toMap();
         bodyMap.remove('id');
         bodyMap['month'] = _getMonthString(finalIssue.tgl);
+        bodyMap['lama_perbaikan'] = finalIssue.perulanganMasalah; // Backward compatibility
 
         final response = await http.post(
           Uri.parse(url),
           headers: _getHeaders(isJson: true),
           body: json.encode(bodyMap),
-        ).timeout(const Duration(seconds: 30));
+        ).timeout(const Duration(seconds: 6));
 
         print('[HttpIssueRepository] Respons diterima. Status: ${response.statusCode}');
         if (response.statusCode == 201) {
           final insertedJson = json.decode(response.body) as Map<String, dynamic>;
-          print('[HttpIssueRepository] Sukses menyimpan data. ID baru: ${insertedJson['id']}');
+          print('[HttpIssueRepository] Sukses menyimpan data ke server. ID baru: ${insertedJson['id']}');
+          
+          // Sinkronisasi ulang ID dari server ke database lokal
+          if (localId != null) {
+            try {
+              await _localCache.deleteIssue(localId);
+              await _localCache.insertIssue(finalIssue.copyWith(id: insertedJson['id'] as int));
+            } catch (_) {}
+          }
           return insertedJson['id'] as int;
         } else {
           throw Exception('Gagal menyimpan data ke server: ${response.body}');
         }
       }
     } catch (e) {
-      print('[HttpIssueRepository EXCEPTION] Gagal menyimpan issue baru: $e');
+      print('[HttpIssueRepository EXCEPTION] Gagal menyimpan issue ke server: $e');
+      if (localId != null) {
+        print('[HttpIssueRepository OFFLINE] Fallback sukses offline. Menggunakan local ID: $localId');
+        return localId;
+      }
       rethrow;
     }
   }
@@ -223,6 +289,14 @@ class HttpIssueRepository implements IssueRepository {
   Future<void> updateIssue(Issue issue) async {
     print('[HttpIssueRepository] Memanggil updateIssue() untuk ID: ${issue.id}');
     _invalidateCache();
+
+    // 1. Update ke local SQLite cache terlebih dahulu agar aman saat offline!
+    try {
+      await _localCache.updateIssue(issue);
+      print('[HttpIssueRepository] Berhasil memperbarui data di local SQLite cache.');
+    } catch (dbErr) {
+      print('[HttpIssueRepository WARNING] Gagal meng-update SQLite cache: $dbErr');
+    }
 
     final String? localPath = issue.evide;
     final url = '$baseUrl/issues/${issue.id}';
@@ -242,14 +316,22 @@ class HttpIssueRepository implements IssueRepository {
         request.fields['tag_issue'] = issue.tagIssue;
         request.fields['penanganan'] = issue.penanganan;
         request.fields['status'] = issue.status;
-        request.fields['lama_perbaikan'] = issue.lamaPerbaikan.toString();
+        request.fields['perulangan_masalah'] = issue.perulanganMasalah.toString();
+        request.fields['lama_perbaikan'] = issue.perulanganMasalah.toString();
         request.fields['penyebab'] = issue.penyebab;
         request.fields['month'] = _getMonthString(issue.tgl);
 
-        print('[HttpIssueRepository] Melampirkan file gambar baru: $localPath');
-        request.files.add(await http.MultipartFile.fromPath('evide', localPath));
+        final ext = localPath.split('.').last.toLowerCase();
+        final isVideo = ext == 'mp4' || ext == 'mov' || ext == 'avi' || ext == 'mkv' || ext == 'webm' || ext == '3gp';
+        print('[HttpIssueRepository] Melampirkan file ${isVideo ? 'video' : 'gambar'} baru: $localPath');
+        final mimeSub = (ext == 'png' || ext == 'webp' || ext == 'gif' || ext == 'heic' || ext == 'heif') ? ext : 'jpeg';
+        request.files.add(await http.MultipartFile.fromPath(
+          'evide',
+          localPath,
+          contentType: isVideo ? MediaType('video', ext) : MediaType('image', mimeSub),
+        ));
 
-        var streamedResponse = await request.send().timeout(const Duration(seconds: 30));
+        var streamedResponse = await request.send().timeout(const Duration(seconds: 120));
         var response = await http.Response.fromStream(streamedResponse);
 
         print('[HttpIssueRepository] Multipart PUT respons diterima. Status: ${response.statusCode}');
@@ -261,12 +343,13 @@ class HttpIssueRepository implements IssueRepository {
         
         final bodyMap = issue.toMap();
         bodyMap['month'] = _getMonthString(issue.tgl);
+        bodyMap['lama_perbaikan'] = issue.perulanganMasalah; // Backward compatibility
 
         final response = await http.put(
           Uri.parse(url),
           headers: _getHeaders(isJson: true),
           body: json.encode(bodyMap),
-        ).timeout(const Duration(seconds: 30));
+        ).timeout(const Duration(seconds: 6));
 
         print('[HttpIssueRepository] Respons diterima. Status: ${response.statusCode}');
         if (response.statusCode != 200) {
@@ -274,8 +357,9 @@ class HttpIssueRepository implements IssueRepository {
         }
       }
     } catch (e) {
-      print('[HttpIssueRepository EXCEPTION] Gagal memperbarui data: $e');
-      rethrow;
+      print('[HttpIssueRepository EXCEPTION] Gagal memperbarui data ke server: $e');
+      print('[HttpIssueRepository OFFLINE] Fallback sukses offline. Perubahan tersimpan secara lokal.');
+      return; // Selesaikan secara sukses tanpa melempar exception agar UI terus berjalan
     }
   }
 
@@ -284,6 +368,14 @@ class HttpIssueRepository implements IssueRepository {
     print('[HttpIssueRepository] Memanggil deleteIssue(id: $id)');
     _invalidateCache();
 
+    // 1. Hapus dari local SQLite cache terlebih dahulu agar data instant hilang dari UI!
+    try {
+      await _localCache.deleteIssue(id);
+      print('[HttpIssueRepository] Berhasil menghapus dari local SQLite cache.');
+    } catch (dbErr) {
+      print('[HttpIssueRepository WARNING] Gagal menghapus dari SQLite cache: $dbErr');
+    }
+
     final url = '$baseUrl/issues/$id';
     print('[HttpIssueRepository] Mengirim HTTP DELETE ke: $url');
     
@@ -291,15 +383,16 @@ class HttpIssueRepository implements IssueRepository {
       final response = await http.delete(
         Uri.parse(url),
         headers: _getHeaders(),
-      ).timeout(const Duration(seconds: 30));
+      ).timeout(const Duration(seconds: 6));
       
       print('[HttpIssueRepository] Respons diterima. Status: ${response.statusCode}');
       if (response.statusCode != 200) {
         throw Exception('Gagal menghapus kendala di server: ${response.body}');
       }
     } catch (e) {
-      print('[HttpIssueRepository EXCEPTION] Gagal melakukan request delete: $e');
-      rethrow;
+      print('[HttpIssueRepository EXCEPTION] Gagal menghapus dari server: $e');
+      print('[HttpIssueRepository OFFLINE] Fallback sukses offline. Penghapusan tersimpan secara lokal.');
+      return; // Selesaikan secara sukses tanpa melempar exception agar UI terus berjalan
     }
   }
 
@@ -370,7 +463,32 @@ class HttpIssueRepository implements IssueRepository {
           }
         }
 
-        print('[HttpIssueRepository] Dashboard: total=$total, solved=$solved, pending=$pending, incomplete=$incomplete');
+        // lastUpdated come as List<Map> from server
+        final List<Issue> lastUpdated = [];
+        if (serverData['lastUpdated'] is List) {
+          for (var item in serverData['lastUpdated']) {
+            lastUpdated.add(Issue.fromMap(item as Map<String, dynamic>));
+          }
+        } else {
+          final List<Issue> all = await getAllIssues();
+          final sorted = List<Issue>.from(all);
+          sorted.sort((a, b) {
+            final tglCompare = b.tgl.compareTo(a.tgl);
+            if (tglCompare != 0) return tglCompare;
+            return (b.id ?? 0).compareTo(a.id ?? 0);
+          });
+          lastUpdated.addAll(sorted.take(5));
+        }
+
+        // Calculate uniqueIssuesCount locally from cache / getAllIssues()
+        final List<Issue> allForUnique = await getAllIssues();
+        final uniqueCodes = allForUnique
+            .map((e) => e.kodeIssue.trim().toUpperCase())
+            .where((c) => c.isNotEmpty)
+            .toSet();
+        final uniqueIssuesCount = uniqueCodes.length;
+
+        print('[HttpIssueRepository] Dashboard: total=$total, solved=$solved, pending=$pending, incomplete=$incomplete, unique=$uniqueIssuesCount');
 
         return {
           'total': total,
@@ -381,6 +499,8 @@ class HttpIssueRepository implements IssueRepository {
           'byKategori': byKategori,
           'byPenanganan': <String, int>{},
           'longestPending': longestPending,
+          'lastUpdated': lastUpdated,
+          'uniqueIssuesCount': uniqueIssuesCount,
         };
       } else {
         print('[HttpIssueRepository ERROR] Dashboard endpoint error: ${response.statusCode}');
@@ -401,7 +521,21 @@ class HttpIssueRepository implements IssueRepository {
         byKategori[issue.kategori] = (byKategori[issue.kategori] ?? 0) + 1;
       }
       final longestPending = all.where((e) => e.status.toLowerCase() == 'pending').toList()
-        ..sort((a, b) => b.lamaPerbaikan.compareTo(a.lamaPerbaikan));
+        ..sort((a, b) => b.perulanganMasalah.compareTo(a.perulanganMasalah));
+      
+      final lastUpdated = List<Issue>.from(all);
+      lastUpdated.sort((a, b) {
+        final tglCompare = b.tgl.compareTo(a.tgl);
+        if (tglCompare != 0) return tglCompare;
+        return (b.id ?? 0).compareTo(a.id ?? 0);
+      });
+
+      final uniqueCodes = all
+          .map((e) => e.kodeIssue.trim().toUpperCase())
+          .where((c) => c.isNotEmpty)
+          .toSet();
+      final uniqueIssuesCount = uniqueCodes.length;
+
       return {
         'total': total,
         'solved': solved,
@@ -410,6 +544,8 @@ class HttpIssueRepository implements IssueRepository {
         'byKategori': byKategori,
         'byPenanganan': <String, int>{},
         'longestPending': longestPending.take(5).toList(),
+        'lastUpdated': lastUpdated.take(5).toList(),
+        'uniqueIssuesCount': uniqueIssuesCount,
       };
     }
   }
@@ -417,18 +553,25 @@ class HttpIssueRepository implements IssueRepository {
   @override
   Future<String> generateNextIssueCode() async {
     final List<Issue> all = await getAllIssues();
+    final uniqueCodes = all
+        .map((e) => e.kodeIssue.trim().toUpperCase())
+        .where((code) => code.isNotEmpty)
+        .toSet();
+    
     int maxNum = 0;
-    for (var item in all) {
-      final String code = item.kodeIssue;
-      if (code.startsWith('ISS-')) {
-        final String numStr = code.replaceFirst('ISS-', '');
-        final int? num = int.tryParse(numStr);
-        if (num != null && num > maxNum) {
+    final regExp = RegExp(r'\d+');
+    for (var code in uniqueCodes) {
+      final match = regExp.firstMatch(code);
+      if (match != null) {
+        final num = int.tryParse(match.group(0)!) ?? 0;
+        if (num > maxNum) {
           maxNum = num;
         }
       }
     }
-    return 'ISS-${(maxNum + 1).toString().padLeft(3, '0')}';
+    
+    final nextNum = maxNum + 1;
+    return 'CI${nextNum.toString().padLeft(3, '0')}';
   }
 
   @override
@@ -442,6 +585,8 @@ class HttpIssueRepository implements IssueRepository {
           'issue': item.issue,
           'kategori': item.kategori,
           'penyebab': item.penyebab,
+          'area': item.area,
+          'evide': item.evide ?? '',
         };
       }
     }
@@ -456,5 +601,15 @@ class HttpIssueRepository implements IssueRepository {
       return months[date.month - 1];
     }
     return 'JAN';
+  }
+
+  @override
+  void clearCache() {
+    print('[HttpIssueRepository] Menghapus in-memory cache dan SQLite local cache...');
+    _invalidateCache();
+    // Also clear SQLite cache to force fresh sync
+    _localCache.clearAllIssues().catchError((e) {
+      print('[HttpIssueRepository WARNING] Gagal menghapus SQLite cache saat clearCache: $e');
+    });
   }
 }
