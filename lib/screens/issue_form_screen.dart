@@ -788,8 +788,19 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
                                 onPressed: () async {
                                   try {
                                     final url = Uri.parse(_evidencePath!);
+                                    final isNgrok = url.host.contains('ngrok');
                                     if (await canLaunchUrl(url)) {
-                                      await launchUrl(url, mode: LaunchMode.externalApplication);
+                                      if (isNgrok) {
+                                        await launchUrl(
+                                          url, 
+                                          mode: LaunchMode.inAppWebView,
+                                          webViewConfiguration: const WebViewConfiguration(
+                                            headers: <String, String>{'ngrok-skip-browser-warning': 'true'},
+                                          ),
+                                        );
+                                      } else {
+                                        await launchUrl(url, mode: LaunchMode.externalApplication);
+                                      }
                                     }
                                   } catch (_) {}
                                 },
