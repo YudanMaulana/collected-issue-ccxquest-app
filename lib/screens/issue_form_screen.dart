@@ -47,6 +47,7 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
     'INNOVATION TRAIN',
     'CLEVO STATION',
     'CLEVO X-DREAMSPACE',
+    'CLEVO X-DREAMFARM',
     'TUNNEL',
     'CHAMBER AI',
     'CHOCOLATOS BRIEFING ROOM',

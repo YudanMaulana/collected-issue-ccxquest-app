@@ -32,6 +32,7 @@ class _IssueListScreenState extends State<IssueListScreen> {
     'Innovation Train',
     'Clevo Station',
     'Clevo X-DREAMSPACE',
+    'Clevo X-DREAMFARM',
     'Tunnel',
     'Chamber Ai',
     'Chocolatos Briefing Room',
