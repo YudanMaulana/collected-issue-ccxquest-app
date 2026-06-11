@@ -50,15 +50,15 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
   String _currentKodeIssue = '';
 
   final List<String> _areas = [
-    'All Wahana',
-    'Innovation Station',
-    'Innovation Train',
-    'Clevo Station',
-    'Clevo X-DREAMSPACE',
-    'Tunnel',
-    'Chamber Ai',
-    'Chocolatos Briefing Room',
-    'X-Gondola'
+    'ALL WAHANA',
+    'INNOVATION STATION',
+    'INNOVATION TRAIN',
+    'CLEVO STATION',
+    'CLEVO X-DREAMSPACE',
+    'TUNNEL',
+    'CHAMBER AI',
+    'CHOCOLATOS BRIEFING ROOM',
+    'X-GONDOLA'
   ];
 
   final List<String> _kategoris = ['SISTEM', 'ASSET'];

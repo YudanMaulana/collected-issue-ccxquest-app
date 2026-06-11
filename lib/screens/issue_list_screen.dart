@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../core/theme.dart';
 import '../models/issue.dart';
@@ -248,6 +249,81 @@ class _IssueListScreenState extends State<IssueListScreen> {
       setState(() {
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _handleCopyWhatsApp() async {
+    if (_selectedFilterDate == null) return;
+    if (_issues.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Tidak ada data issue untuk disalin pada tanggal ini!'),
+          backgroundColor: AppTheme.statusPending,
+        ),
+      );
+      return;
+    }
+
+    try {
+      final String formattedDate = DateFormat('EEEE, dd MMMM yyyy').format(_selectedFilterDate!.toLocal());
+      
+      final totalIssues = _issues.length;
+      final solvedCount = _issues.where((e) => e.status.toLowerCase() == 'solved').length;
+      final pendingCount = _issues.where((e) => e.status.toLowerCase() == 'pending').length;
+
+      final buffer = StringBuffer();
+      buffer.writeln('*COLLECTED ISSUE - $formattedDate*');
+      buffer.writeln('Total Issue: $totalIssues');
+      buffer.writeln('Solved: $solvedCount');
+      buffer.writeln('Pending: $pendingCount');
+      buffer.writeln();
+
+      for (int i = 0; i < _issues.length; i++) {
+        final issue = _issues[i];
+        final noUrut = i + 1;
+        final area = issue.area.toUpperCase();
+        final kendala = issue.issue;
+        final penyebab = issue.penyebab.isNotEmpty ? issue.penyebab : '-';
+        final status = issue.status.toLowerCase() == 'solved' ? 'SOLVED ✅' : 'PENDING ⏳';
+
+        buffer.writeln('$noUrut. *Area:* $area');
+        buffer.writeln('   *Issue/Kendala:* $kendala');
+        buffer.writeln('   *Penyebab:* $penyebab');
+        buffer.writeln('   *Status Perbaikan:* $status');
+        if (i < _issues.length - 1) {
+          buffer.writeln();
+        }
+      }
+
+      await Clipboard.setData(ClipboardData(text: buffer.toString()));
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle_outline, color: Colors.white, size: 20),
+                SizedBox(width: 8),
+                Text(
+                  'Laporan berhasil disalin ke clipboard!',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            backgroundColor: Color(0xFF25D366),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal menyalin ke clipboard: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
     }
   }
 
@@ -977,6 +1053,25 @@ class _IssueListScreenState extends State<IssueListScreen> {
               ],
             ),
           ),
+          if (_selectedFilterDate != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF25D366),
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(double.infinity, 44),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  elevation: 2,
+                ),
+                onPressed: _handleCopyWhatsApp,
+                icon: const Icon(Icons.copy, size: 18),
+                label: const Text(
+                  'Salin Laporan (WhatsApp)',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                ),
+              ),
+            ),
 
           // Catalog Content
           Expanded(

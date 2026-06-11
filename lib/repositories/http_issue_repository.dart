@@ -178,8 +178,28 @@ class HttpIssueRepository implements IssueRepository {
 
     Issue finalIssue = issue;
     if (issue.kodeIssue.isEmpty) {
-      final code = await generateNextIssueCode();
-      finalIssue = issue.copyWith(kodeIssue: code);
+      // Auto-match: cek apakah issue text yang sama sudah punya kode
+      String? matchedCode;
+      try {
+        final allIssues = await getAllIssues();
+        final issueTextLower = issue.issue.trim().toLowerCase();
+        for (var existing in allIssues) {
+          if (existing.kodeIssue.isNotEmpty &&
+              existing.issue.trim().toLowerCase() == issueTextLower) {
+            matchedCode = existing.kodeIssue;
+            break;
+          }
+        }
+      } catch (_) {}
+
+      if (matchedCode != null) {
+        print('[HttpIssueRepository] Auto-match: issue serupa ditemukan, pakai kode $matchedCode');
+        finalIssue = issue.copyWith(kodeIssue: matchedCode);
+      } else {
+        final code = await generateNextIssueCode();
+        print('[HttpIssueRepository] Issue baru, generate kode: $code');
+        finalIssue = issue.copyWith(kodeIssue: code);
+      }
     }
 
     // 1. Simpan di local SQLite cache terlebih dahulu agar data tetap aman saat offline!
@@ -522,7 +542,6 @@ class HttpIssueRepository implements IssueRepository {
       }
       final longestPending = all.where((e) => e.status.toLowerCase() == 'pending').toList()
         ..sort((a, b) => b.perulanganMasalah.compareTo(a.perulanganMasalah));
-      
       final lastUpdated = List<Issue>.from(all);
       lastUpdated.sort((a, b) {
         final tglCompare = b.tgl.compareTo(a.tgl);

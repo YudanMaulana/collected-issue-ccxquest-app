@@ -284,6 +284,7 @@ class SupabaseIssueRepository implements IssueRepository {
 
     final longestPending = all.where((element) => element.status == 'pending').toList();
     longestPending.sort((a, b) => b.perulanganMasalah.compareTo(a.perulanganMasalah));
+<<<<<<< HEAD
 
     final lastUpdated = List<Issue>.from(all);
     lastUpdated.sort((a, b) {
@@ -297,6 +298,8 @@ class SupabaseIssueRepository implements IssueRepository {
         .where((c) => c.isNotEmpty)
         .toSet();
     final uniqueIssuesCount = uniqueCodes.length;
+=======
+>>>>>>> 95fa6fef18d21218c8989d3c0f1b0c1496a4125e
 
     return {
       'total': total,

@@ -30,7 +30,11 @@ class LocalIssueRepository implements IssueRepository {
             issue TEXT NOT NULL,
             penanganan TEXT NOT NULL,
             status TEXT NOT NULL,
+<<<<<<< HEAD
             perulangan_masalah INTEGER NOT NULL DEFAULT 1,
+=======
+            perulangan_masalah INTEGER NOT NULL,
+>>>>>>> 95fa6fef18d21218c8989d3c0f1b0c1496a4125e
             penyebab TEXT NOT NULL,
             evide TEXT,
             tag_issue TEXT,

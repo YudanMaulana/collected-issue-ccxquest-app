@@ -175,12 +175,15 @@ class FirebaseIssueRepository implements IssueRepository {
         .where((element) => element.status == 'pending')
         .toList();
     longestPending.sort((a, b) => b.perulanganMasalah.compareTo(a.perulanganMasalah));
+<<<<<<< HEAD
 
     final uniqueCodes = _mockFirebaseStorage
         .map((e) => e.kodeIssue.trim().toUpperCase())
         .where((c) => c.isNotEmpty)
         .toSet();
     final uniqueIssuesCount = uniqueCodes.length;
+=======
+>>>>>>> 95fa6fef18d21218c8989d3c0f1b0c1496a4125e
 
     return {
       'total': total,

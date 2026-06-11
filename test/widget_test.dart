@@ -12,20 +12,16 @@ import 'package:collected_issues/main.dart';
 import 'package:collected_issues/repositories/local_issue_repository.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
+  testWidgets('Authentication gate screen smoke test', (WidgetTester tester) async {
     // Build our app and trigger a frame.
     await tester.pumpWidget(MyApp(repository: LocalIssueRepository()));
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    // Verify that the Authentication / PinScreen is shown first
+    expect(find.text('COLLECTED ISSUE'), findsOneWidget);
+    expect(find.text('Enter PIN to Access Database'), findsOneWidget);
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
+    // Verify presence of number keys on the pin screen keypad
     expect(find.text('1'), findsOneWidget);
+    expect(find.text('9'), findsOneWidget);
   });
 }
