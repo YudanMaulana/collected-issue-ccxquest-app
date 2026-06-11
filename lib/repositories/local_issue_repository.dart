@@ -198,34 +198,36 @@ class LocalIssueRepository implements IssueRepository {
     final db = await database;
     
     Issue finalIssue = issue;
-    if (finalIssue.kodeIssue.isNotEmpty) {
-      if (finalIssue.evide == null || finalIssue.evide!.isEmpty) {
-        final List<Map<String, dynamic>> existing = await db.query(
-          'issues',
-          columns: ['evide'],
-          where: 'kode_issue = ? AND evide IS NOT NULL AND evide != "" AND id != ?',
-          whereArgs: [finalIssue.kodeIssue, finalIssue.id],
-          limit: 1,
-        );
-        if (existing.isNotEmpty) {
-          finalIssue = finalIssue.copyWith(evide: existing.first['evide'] as String?);
-        }
-      } else {
-        await db.update(
-          'issues',
-          {'evide': finalIssue.evide},
-          where: 'kode_issue = ?',
-          whereArgs: [finalIssue.kodeIssue],
-        );
+    if (finalIssue.kodeIssue.isNotEmpty && (finalIssue.evide == null || finalIssue.evide!.isEmpty)) {
+      final List<Map<String, dynamic>> existing = await db.query(
+        'issues',
+        columns: ['evide'],
+        where: 'kode_issue = ? AND evide IS NOT NULL AND evide != "" AND id != ?',
+        whereArgs: [finalIssue.kodeIssue, finalIssue.id],
+        limit: 1,
+      );
+      if (existing.isNotEmpty) {
+        finalIssue = finalIssue.copyWith(evide: existing.first['evide'] as String?);
       }
     }
 
-    await db.update(
-      'issues',
-      finalIssue.toMap(),
-      where: 'id = ?',
-      whereArgs: [finalIssue.id],
-    );
+    final dataToUpdate = finalIssue.toMap()..remove('id');
+
+    if (finalIssue.kodeIssue.isNotEmpty) {
+      await db.update(
+        'issues',
+        dataToUpdate,
+        where: 'kode_issue = ?',
+        whereArgs: [finalIssue.kodeIssue],
+      );
+    } else {
+      await db.update(
+        'issues',
+        dataToUpdate,
+        where: 'id = ?',
+        whereArgs: [finalIssue.id],
+      );
+    }
     await recalculateDurations();
   }
 

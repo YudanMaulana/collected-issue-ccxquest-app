@@ -54,8 +54,8 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
     'INNOVATION STATION',
     'INNOVATION TRAIN',
     'CLEVO STATION',
-    'CLEVO X-DREAMSPACE',
     'CLEVO X-DREAMFARM',
+    'CLEVO X-DREAMSPACE',
     'TUNNEL',
     'CHAMBER AI',
     'CHOCOLATOS BRIEFING ROOM',
@@ -64,6 +64,20 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
 
   final List<String> _kategoris = ['SISTEM', 'ASSET'];
   final List<String> _statuses = ['pending', 'solved'];
+  final List<String> _tagOptions = [
+    'Auto',
+    'Koneksi Jaringan',
+    'Asset Display',
+    'Bug Konten',
+    'Lampu Penerangan',
+    'Sensor Input',
+    'Software Aplikasi',
+    'Mekanik Efek',
+    'Kerusakan Fasilitas',
+    'Listrik AC',
+    'Lain-lain',
+  ];
+  late String _selectedTagIssue;
   
   // Penanganan Vendor recommendations
   final List<String> _penangananRecommendations = [
@@ -130,6 +144,13 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
     _penangananController.text = widget.issue?.penanganan ?? ''; // Exclude duplicateFrom.penanganan, start new empty!
     _evidencePath = widget.issue?.evide; // Only keep evidence for edits, not duplicates
     _currentKodeIssue = sourceIssue?.kodeIssue ?? ''; // Copied for duplicates too!
+
+    final String issueTag = sourceIssue?.tagIssue ?? '';
+    final String autoTagPreview = Issue.calculateTag(_issueController.text.trim());
+    if (issueTag.isNotEmpty && !_tagOptions.contains(issueTag)) {
+      _tagOptions.add(issueTag);
+    }
+    _selectedTagIssue = issueTag.isEmpty || issueTag == autoTagPreview ? 'Auto' : issueTag;
 
     _loadUniqueIssues();
   }
@@ -322,6 +343,9 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
       perulanganMasalah: widget.issue?.perulanganMasalah ?? widget.duplicateFrom?.perulanganMasalah ?? 1,
       penyebab: _penyebabController.text.trim(),
       evide: _evidencePath,
+      tagIssue: _selectedTagIssue == 'Auto'
+          ? Issue.calculateTag(_issueController.text.trim())
+          : _selectedTagIssue,
       kodeIssue: _currentKodeIssue,
     );
 
@@ -731,12 +755,35 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
                     validator: (val) => val == null || val.trim().isEmpty ? 'Mohon isi kolom issue' : null,
                   ),
                   const SizedBox(height: 8),
+                  const Text('KLASIFIKASI TAG', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<String>(
+                    value: _selectedTagIssue,
+                    decoration: InputDecoration(
+                      hintText: 'Pilih tag manual atau Auto',
+                      helperText: 'Auto mengikuti isi issue, manual akan disimpan apa adanya',
+                    ),
+                    dropdownColor: AppTheme.cardBg,
+                    items: _tagOptions.map((tag) {
+                      return DropdownMenuItem<String>(
+                        value: tag,
+                        child: Text(tag),
+                      );
+                    }).toList(),
+                    onChanged: (val) {
+                      if (val == null) return;
+                      setState(() {
+                        _selectedTagIssue = val;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 8),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Row(
                         children: [
-                          const Text('Klasifikasi Otomatis (Tag): ', style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
+                          const Text('Preview Otomatis: ', style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
                           const SizedBox(width: 4),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),

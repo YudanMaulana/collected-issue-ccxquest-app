@@ -11,7 +11,7 @@ class Issue {
   final int perulanganMasalah;
   final String penyebab;
   final String? evide; // URL or local path
-  final String tagIssue; // Auto-calculated tag
+  final String tagIssue; // Manual tag selection, or auto-calculated fallback
   final String kodeIssue; // Unique tracking code
 
   Issue({

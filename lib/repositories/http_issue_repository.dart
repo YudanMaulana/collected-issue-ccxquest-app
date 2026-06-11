@@ -318,62 +318,82 @@ class HttpIssueRepository implements IssueRepository {
       print('[HttpIssueRepository WARNING] Gagal meng-update SQLite cache: $dbErr');
     }
 
-    final String? localPath = issue.evide;
-    final url = '$baseUrl/issues/${issue.id}';
+    Issue payloadIssue = issue;
+    List<Issue> affectedIssues = [issue];
+    try {
+      final localIssues = await _localCache.getAllIssues();
+      if (issue.kodeIssue.isNotEmpty) {
+        final sameCodeIssues = localIssues
+            .where((item) => item.kodeIssue.trim().toUpperCase() == issue.kodeIssue.trim().toUpperCase())
+            .toList();
+        if (sameCodeIssues.isNotEmpty) {
+          affectedIssues = sameCodeIssues;
+          payloadIssue = sameCodeIssues.first;
+        }
+      }
+    } catch (_) {}
 
     try {
-      if (localPath != null && !localPath.startsWith('http') && localPath.isNotEmpty) {
-        print('[HttpIssueRepository] Mengirim Multipart PUT (dengan file gambar baru) ke: $url');
-        
-        var request = http.MultipartRequest('PUT', Uri.parse(url));
-        request.headers.addAll(_getHeaders());
-        
-        request.fields['tgl'] = issue.tgl.toIso8601String();
-        request.fields['area'] = issue.area;
-        request.fields['kategori'] = issue.kategori;
-        request.fields['kode_issue'] = issue.kodeIssue;
-        request.fields['issue'] = issue.issue;
-        request.fields['tag_issue'] = issue.tagIssue;
-        request.fields['penanganan'] = issue.penanganan;
-        request.fields['status'] = issue.status;
-        request.fields['perulangan_masalah'] = issue.perulanganMasalah.toString();
-        request.fields['lama_perbaikan'] = issue.perulanganMasalah.toString();
-        request.fields['penyebab'] = issue.penyebab;
-        request.fields['month'] = _getMonthString(issue.tgl);
+      for (final targetIssue in affectedIssues) {
+        final targetId = targetIssue.id ?? issue.id;
+        if (targetId == null) continue;
+        final String? localPath = payloadIssue.evide;
+        final url = '$baseUrl/issues/$targetId';
 
-        final ext = localPath.split('.').last.toLowerCase();
-        final isVideo = ext == 'mp4' || ext == 'mov' || ext == 'avi' || ext == 'mkv' || ext == 'webm' || ext == '3gp';
-        print('[HttpIssueRepository] Melampirkan file ${isVideo ? 'video' : 'gambar'} baru: $localPath');
-        final mimeSub = (ext == 'png' || ext == 'webp' || ext == 'gif' || ext == 'heic' || ext == 'heif') ? ext : 'jpeg';
-        request.files.add(await http.MultipartFile.fromPath(
-          'evide',
-          localPath,
-          contentType: isVideo ? MediaType('video', ext) : MediaType('image', mimeSub),
-        ));
+        if (localPath != null && !localPath.startsWith('http') && localPath.isNotEmpty) {
+          print('[HttpIssueRepository] Mengirim Multipart PUT ke: $url');
+          
+          var request = http.MultipartRequest('PUT', Uri.parse(url));
+          request.headers.addAll(_getHeaders());
+          
+          request.fields['tgl'] = payloadIssue.tgl.toIso8601String();
+          request.fields['area'] = payloadIssue.area;
+          request.fields['kategori'] = payloadIssue.kategori;
+          request.fields['kode_issue'] = payloadIssue.kodeIssue;
+          request.fields['issue'] = payloadIssue.issue;
+          request.fields['tag_issue'] = payloadIssue.tagIssue;
+          request.fields['penanganan'] = payloadIssue.penanganan;
+          request.fields['status'] = payloadIssue.status;
+          request.fields['perulangan_masalah'] = payloadIssue.perulanganMasalah.toString();
+          request.fields['lama_perbaikan'] = payloadIssue.perulanganMasalah.toString();
+          request.fields['penyebab'] = payloadIssue.penyebab;
+          request.fields['month'] = _getMonthString(payloadIssue.tgl);
 
-        var streamedResponse = await request.send().timeout(const Duration(seconds: 120));
-        var response = await http.Response.fromStream(streamedResponse);
+          final ext = localPath.split('.').last.toLowerCase();
+          final isVideo = ext == 'mp4' || ext == 'mov' || ext == 'avi' || ext == 'mkv' || ext == 'webm' || ext == '3gp';
+          print('[HttpIssueRepository] Melampirkan file ${isVideo ? 'video' : 'gambar'}: $localPath');
+          final mimeSub = (ext == 'png' || ext == 'webp' || ext == 'gif' || ext == 'heic' || ext == 'heif') ? ext : 'jpeg';
+          request.files.add(await http.MultipartFile.fromPath(
+            'evide',
+            localPath,
+            contentType: isVideo ? MediaType('video', ext) : MediaType('image', mimeSub),
+          ));
 
-        print('[HttpIssueRepository] Multipart PUT respons diterima. Status: ${response.statusCode}');
-        if (response.statusCode != 200) {
-          throw Exception('Gagal memperbarui data di server: ${response.body}');
-        }
-      } else {
-        print('[HttpIssueRepository] Mengirim JSON PUT ke: $url');
-        
-        final bodyMap = issue.toMap();
-        bodyMap['month'] = _getMonthString(issue.tgl);
-        bodyMap['lama_perbaikan'] = issue.perulanganMasalah; // Backward compatibility
+          var streamedResponse = await request.send().timeout(const Duration(seconds: 120));
+          var response = await http.Response.fromStream(streamedResponse);
 
-        final response = await http.put(
-          Uri.parse(url),
-          headers: _getHeaders(isJson: true),
-          body: json.encode(bodyMap),
-        ).timeout(const Duration(seconds: 6));
+          print('[HttpIssueRepository] Multipart PUT respons diterima. Status: ${response.statusCode}');
+          if (response.statusCode != 200) {
+            throw Exception('Gagal memperbarui data di server: ${response.body}');
+          }
+        } else {
+          print('[HttpIssueRepository] Mengirim JSON PUT ke: $url');
+          
+          final bodyMap = payloadIssue.toMap();
+          bodyMap.remove('id');
+          bodyMap['month'] = _getMonthString(payloadIssue.tgl);
+          bodyMap['lama_perbaikan'] = payloadIssue.perulanganMasalah; // Backward compatibility
 
-        print('[HttpIssueRepository] Respons diterima. Status: ${response.statusCode}');
-        if (response.statusCode != 200) {
-          throw Exception('Gagal memperbarui data di server: ${response.body}');
+          final response = await http.put(
+            Uri.parse(url),
+            headers: _getHeaders(isJson: true),
+            body: json.encode(bodyMap),
+          ).timeout(const Duration(seconds: 6));
+
+          print('[HttpIssueRepository] Respons diterima. Status: ${response.statusCode}');
+          if (response.statusCode != 200) {
+            throw Exception('Gagal memperbarui data di server: ${response.body}');
+          }
         }
       }
     } catch (e) {

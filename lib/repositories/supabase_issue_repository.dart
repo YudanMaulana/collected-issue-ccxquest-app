@@ -144,7 +144,13 @@ class SupabaseIssueRepository implements IssueRepository {
     }
 
     final dataToUpdate = issue.copyWith(evide: onlineUrl).toMap();
-    await _client.from('issues').update(dataToUpdate).eq('id', issue.id!);
+    final scopedUpdate = Map<String, dynamic>.from(dataToUpdate)..remove('id');
+
+    if (issue.kodeIssue.isNotEmpty) {
+      await _client.from('issues').update(scopedUpdate).eq('kode_issue', issue.kodeIssue);
+    } else {
+      await _client.from('issues').update(scopedUpdate).eq('id', issue.id!);
+    }
 
     await recalculateDurations();
   }
