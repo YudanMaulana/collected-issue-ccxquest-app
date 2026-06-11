@@ -107,7 +107,7 @@ class LocalIssueRepository implements IssueRepository {
     }
 
     if (area != null && area != 'All' && area.isNotEmpty) {
-      whereClauses.add('area = ?');
+      whereClauses.add('LOWER(area) = LOWER(?)');
       whereArgs.add(area);
     }
 
