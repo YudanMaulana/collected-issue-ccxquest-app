@@ -16,7 +16,13 @@ class IncompleteIssuesScreen extends StatefulWidget {
 class _IncompleteIssuesScreenState extends State<IncompleteIssuesScreen> {
   bool _isLoading = true;
   List<Issue> _issues = [];
-  String _selectedMissingField = 'All';
+  final Map<String, bool> _draftFieldFilters = {
+    'Tag Detail': false,
+    'Eviden': false,
+    'Penyebab': false,
+    'Penanganan': false,
+  };
+  Set<String> _activeFieldFilters = {};
 
   @override
   void initState() {
@@ -56,8 +62,10 @@ class _IncompleteIssuesScreenState extends State<IncompleteIssuesScreen> {
   }
 
   List<Issue> get _filteredIssues {
-    if (_selectedMissingField == 'All') return _issues;
-    return _issues.where((issue) => issue.missingFields.contains(_selectedMissingField)).toList();
+    if (_activeFieldFilters.isEmpty) return _issues;
+    return _issues.where((issue) {
+      return _activeFieldFilters.any(issue.missingFields.contains);
+    }).toList();
   }
 
   int _countByField(String field) {
@@ -80,40 +88,53 @@ class _IncompleteIssuesScreenState extends State<IncompleteIssuesScreen> {
     }
   }
 
-  Widget _buildSummaryCard(String label, int value, IconData icon, Color color) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: AppTheme.cardBg,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppTheme.borderNavy),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: color, size: 20),
-            const SizedBox(height: 10),
-            Text(
-              value.toString(),
+  void _applyFilters() {
+    setState(() {
+      _activeFieldFilters = _draftFieldFilters.entries
+          .where((entry) => entry.value)
+          .map((entry) => entry.key)
+          .toSet();
+    });
+  }
+
+  void _clearFilters() {
+    setState(() {
+      for (final key in _draftFieldFilters.keys) {
+        _draftFieldFilters[key] = false;
+      }
+      _activeFieldFilters = {};
+    });
+  }
+
+  Widget _buildCompactFilterTile(String label, IconData icon, Color color) {
+    return CheckboxListTile(
+      value: _draftFieldFilters[label] ?? false,
+      activeColor: AppTheme.accentYellow,
+      checkColor: AppTheme.primaryNavy,
+      contentPadding: EdgeInsets.zero,
+      dense: true,
+      controlAffinity: ListTileControlAffinity.leading,
+      title: Row(
+        children: [
+          Icon(icon, color: color, size: 16),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              '$label (${_countByField(label)})',
               style: const TextStyle(
                 color: AppTheme.textPrimary,
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: const TextStyle(
-                color: AppTheme.textSecondary,
-                fontSize: 11,
+                fontSize: 12,
                 fontWeight: FontWeight.w600,
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
+      onChanged: (value) {
+        setState(() {
+          _draftFieldFilters[label] = value ?? false;
+        });
+      },
     );
   }
 
@@ -155,52 +176,75 @@ class _IncompleteIssuesScreenState extends State<IncompleteIssuesScreen> {
                           ),
                         ),
                         const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            _buildSummaryCard('Total Incomplete', _issues.length, Icons.warning_amber_rounded, AppTheme.statusPending),
-                            const SizedBox(width: 10),
-                            _buildSummaryCard('Tag Detail', _countByField('Tag Detail'), Icons.sell_outlined, AppTheme.accentYellow),
-                            const SizedBox(width: 10),
-                            _buildSummaryCard('Eviden', _countByField('Eviden'), Icons.image_outlined, Colors.lightBlueAccent),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        Row(
-                          children: [
-                            _buildSummaryCard('Penyebab', _countByField('Penyebab'), Icons.help_outline, Colors.orangeAccent),
-                            const SizedBox(width: 10),
-                            _buildSummaryCard('Penanganan', _countByField('Penanganan'), Icons.build_outlined, Colors.greenAccent),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
                             color: AppTheme.cardBg,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(color: AppTheme.borderNavy),
                           ),
-                          child: DropdownButtonHideUnderline(
-                            child: DropdownButton<String>(
-                              value: _selectedMissingField,
-                              isExpanded: true,
-                              dropdownColor: AppTheme.cardBg,
-                              items: const [
-                                DropdownMenuItem(value: 'All', child: Text('Semua Kolom Kosong')),
-                                DropdownMenuItem(value: 'Tag Detail', child: Text('Tag Detail Kosong')),
-                                DropdownMenuItem(value: 'Eviden', child: Text('Eviden Kosong')),
-                                DropdownMenuItem(value: 'Penyebab', child: Text('Penyebab Kosong')),
-                                DropdownMenuItem(value: 'Penanganan', child: Text('Penanganan Kosong')),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Total incomplete: ${_issues.length}',
+                                style: const TextStyle(
+                                  color: AppTheme.textPrimary,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              _buildCompactFilterTile('Tag Detail', Icons.sell_outlined, AppTheme.accentYellow),
+                              _buildCompactFilterTile('Eviden', Icons.image_outlined, Colors.lightBlueAccent),
+                              _buildCompactFilterTile('Penyebab', Icons.help_outline, Colors.orangeAccent),
+                              _buildCompactFilterTile('Penanganan', Icons.build_outlined, Colors.greenAccent),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: OutlinedButton(
+                                      onPressed: _clearFilters,
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: AppTheme.textSecondary,
+                                        side: const BorderSide(color: AppTheme.borderNavy),
+                                      ),
+                                      child: const Text('Reset'),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: ElevatedButton(
+                                      onPressed: _applyFilters,
+                                      child: const Text('Terapkan'),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (_activeFieldFilters.isNotEmpty) ...[
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Filter aktif: ${_activeFieldFilters.join(', ')}',
+                                  style: const TextStyle(
+                                    color: AppTheme.textSecondary,
+                                    fontSize: 11,
+                                  ),
+                                ),
                               ],
-                              onChanged: (value) {
-                                if (value == null) return;
-                                setState(() {
-                                  _selectedMissingField = value;
-                                });
-                              },
-                            ),
+                            ],
                           ),
                         ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Menampilkan ${visibleIssues.length} hasil',
+                          style: const TextStyle(
+                            color: AppTheme.textSecondary,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
                       ],
                     ),
                   ),
