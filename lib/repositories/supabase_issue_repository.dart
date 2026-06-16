@@ -144,13 +144,7 @@ class SupabaseIssueRepository implements IssueRepository {
     }
 
     final dataToUpdate = issue.copyWith(evide: onlineUrl).toMap();
-    final scopedUpdate = Map<String, dynamic>.from(dataToUpdate)..remove('id');
-
-    if (issue.kodeIssue.isNotEmpty) {
-      await _client.from('issues').update(scopedUpdate).eq('kode_issue', issue.kodeIssue);
-    } else {
-      await _client.from('issues').update(scopedUpdate).eq('id', issue.id!);
-    }
+    await _client.from('issues').update(dataToUpdate).eq('id', issue.id!);
 
     await recalculateDurations();
   }
@@ -291,19 +285,6 @@ class SupabaseIssueRepository implements IssueRepository {
     final longestPending = all.where((element) => element.status == 'pending').toList();
     longestPending.sort((a, b) => b.perulanganMasalah.compareTo(a.perulanganMasalah));
 
-    final lastUpdated = List<Issue>.from(all);
-    lastUpdated.sort((a, b) {
-      final tglCompare = b.tgl.compareTo(a.tgl);
-      if (tglCompare != 0) return tglCompare;
-      return (b.id ?? 0).compareTo(a.id ?? 0);
-    });
-
-    final uniqueCodes = all
-        .map((e) => e.kodeIssue.trim().toUpperCase())
-        .where((c) => c.isNotEmpty)
-        .toSet();
-    final uniqueIssuesCount = uniqueCodes.length;
-
     return {
       'total': total,
       'solved': solved,
@@ -312,33 +293,24 @@ class SupabaseIssueRepository implements IssueRepository {
       'byKategori': byKategori,
       'byPenanganan': byPenanganan,
       'longestPending': longestPending.take(5).toList(),
-      'lastUpdated': lastUpdated.take(5).toList(),
-      'uniqueIssuesCount': uniqueIssuesCount,
     };
   }
 
   @override
   Future<String> generateNextIssueCode() async {
     final List<Issue> all = await getAllIssues();
-    final uniqueCodes = all
-        .map((e) => e.kodeIssue.trim().toUpperCase())
-        .where((code) => code.isNotEmpty)
-        .toSet();
-    
     int maxNum = 0;
-    final regExp = RegExp(r'\d+');
-    for (var code in uniqueCodes) {
-      final match = regExp.firstMatch(code);
-      if (match != null) {
-        final num = int.tryParse(match.group(0)!) ?? 0;
-        if (num > maxNum) {
+    for (var item in all) {
+      final String code = item.kodeIssue;
+      if (code.startsWith('ISS-')) {
+        final String numStr = code.replaceFirst('ISS-', '');
+        final int? num = int.tryParse(numStr);
+        if (num != null && num > maxNum) {
           maxNum = num;
         }
       }
     }
-    
-    final nextNum = maxNum + 1;
-    return 'CI${nextNum.toString().padLeft(3, '0')}';
+    return 'ISS-${(maxNum + 1).toString().padLeft(3, '0')}';
   }
 
   @override
@@ -352,18 +324,11 @@ class SupabaseIssueRepository implements IssueRepository {
           'issue': item.issue,
           'kategori': item.kategori,
           'penyebab': item.penyebab,
-          'area': item.area,
-          'tag_detail': item.tagDetail,
         };
       }
     }
     final sortedList = unique.values.toList();
     sortedList.sort((a, b) => a['kode_issue']!.compareTo(b['kode_issue']!));
     return sortedList;
-  }
-
-  @override
-  void clearCache() {
-    _invalidateCache();
   }
 }

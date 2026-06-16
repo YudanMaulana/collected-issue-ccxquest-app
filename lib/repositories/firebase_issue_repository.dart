@@ -66,16 +66,6 @@ class FirebaseIssueRepository implements IssueRepository {
 
   @override
   Future<void> updateIssue(Issue issue) async {
-    if (issue.kodeIssue.isNotEmpty) {
-      for (var i = 0; i < _mockFirebaseStorage.length; i++) {
-        if (_mockFirebaseStorage[i].kodeIssue == issue.kodeIssue) {
-          _mockFirebaseStorage[i] = issue.copyWith(id: _mockFirebaseStorage[i].id);
-        }
-      }
-      await recalculateDurations();
-      return;
-    }
-
     final index = _mockFirebaseStorage.indexWhere((element) => element.id == issue.id);
     if (index != -1) {
       _mockFirebaseStorage[index] = issue;
@@ -186,12 +176,6 @@ class FirebaseIssueRepository implements IssueRepository {
         .toList();
     longestPending.sort((a, b) => b.perulanganMasalah.compareTo(a.perulanganMasalah));
 
-    final uniqueCodes = _mockFirebaseStorage
-        .map((e) => e.kodeIssue.trim().toUpperCase())
-        .where((c) => c.isNotEmpty)
-        .toSet();
-    final uniqueIssuesCount = uniqueCodes.length;
-
     return {
       'total': total,
       'solved': solved,
@@ -200,31 +184,23 @@ class FirebaseIssueRepository implements IssueRepository {
       'byKategori': byKategori,
       'byPenanganan': byPenanganan,
       'longestPending': longestPending.take(5).toList(),
-      'uniqueIssuesCount': uniqueIssuesCount,
     };
   }
 
   @override
   Future<String> generateNextIssueCode() async {
-    final uniqueCodes = _mockFirebaseStorage
-        .map((e) => e.kodeIssue.trim().toUpperCase())
-        .where((code) => code.isNotEmpty)
-        .toSet();
-    
     int maxNum = 0;
-    final regExp = RegExp(r'\d+');
-    for (var code in uniqueCodes) {
-      final match = regExp.firstMatch(code);
-      if (match != null) {
-        final num = int.tryParse(match.group(0)!) ?? 0;
-        if (num > maxNum) {
+    for (var item in _mockFirebaseStorage) {
+      final String code = item.kodeIssue;
+      if (code.startsWith('ISS-')) {
+        final String numStr = code.replaceFirst('ISS-', '');
+        final int? num = int.tryParse(numStr);
+        if (num != null && num > maxNum) {
           maxNum = num;
         }
       }
     }
-    
-    final nextNum = maxNum + 1;
-    return 'CI${nextNum.toString().padLeft(3, '0')}';
+    return 'ISS-${(maxNum + 1).toString().padLeft(3, '0')}';
   }
 
   @override
@@ -237,18 +213,11 @@ class FirebaseIssueRepository implements IssueRepository {
           'issue': item.issue,
           'kategori': item.kategori,
           'penyebab': item.penyebab,
-          'area': item.area,
-          'tag_detail': item.tagDetail,
         };
       }
     }
     final sortedList = unique.values.toList();
     sortedList.sort((a, b) => a['kode_issue']!.compareTo(b['kode_issue']!));
     return sortedList;
-  }
-
-  @override
-  void clearCache() {
-    print('[FirebaseIssueRepository] clearCache called (no-op for mock firebase storage)');
   }
 }

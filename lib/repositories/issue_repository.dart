@@ -15,7 +15,4 @@ abstract class IssueRepository {
   // Unique Tracking Codes
   Future<String> generateNextIssueCode();
   Future<List<Map<String, String>>> getUniqueIssues();
-
-  // Cache Control
-  void clearCache();
 }

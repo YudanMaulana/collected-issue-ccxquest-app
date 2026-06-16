@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:intl/intl.dart';
 import '../core/theme.dart';
 import '../models/issue.dart';
 import '../repositories/issue_repository.dart';
@@ -80,7 +79,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final byArea = _metrics['byArea'] as Map<String, int>? ?? {};
     final byKategori = _metrics['byKategori'] as Map<String, int>? ?? {};
     final longestPending = _metrics['longestPending'] as List<Issue>? ?? [];
-    final lastUpdated = _metrics['lastUpdated'] as List<Issue>? ?? [];
 
     return RefreshIndicator(
       onRefresh: _loadDashboardData,
@@ -134,6 +132,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ],
 
+            // Top Summary Cards
             Row(
               children: [
                 Expanded(
@@ -145,19 +144,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                Expanded(
-                  child: _buildMetricCard(
-                    title: 'Jumlah Kode Issue',
-                    value: (_metrics['uniqueIssuesCount'] ?? 0).toString(),
-                    icon: Icons.settings_suggest,
-                    color: AppTheme.accentYellow,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
                 Expanded(
                   child: _buildMetricCard(
                     title: 'Solved',
@@ -208,74 +194,134 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const SizedBox(height: 28),
             ],
 
-            // Collapsible LAST UPDATED ISSUES Section
-            if (lastUpdated.isNotEmpty) ...[
-              Card(
-                margin: const EdgeInsets.only(bottom: 16),
-                child: Theme(
-                  data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-                  child: ExpansionTile(
-                    title: Row(
-                      children: [
-                        const Icon(Icons.history, color: AppTheme.accentYellow, size: 20),
-                        const SizedBox(width: 10),
-                        const Text(
-                          'LAST UPDATED ISSUES',
-                          style: TextStyle(
-                            color: AppTheme.textPrimary,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ],
-                    ),
-                    subtitle: Text(
-                      '${lastUpdated.length} Kendala Terakhir Tercatat',
-                      style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11),
-                    ),
-                    childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                    shape: const Border(),
-                    collapsedShape: const Border(),
-                    children: lastUpdated.map((issue) => _buildMiniIssueItem(issue, isPendingType: false)).toList(),
-                  ),
-                ),
-              ),
-            ],
-
-            // Collapsible LONGEST PENDING ISSUES Section
+            // Longest Pending Section
             if (longestPending.isNotEmpty) ...[
-              Card(
-                margin: const EdgeInsets.only(bottom: 24),
-                child: Theme(
-                  data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-                  child: ExpansionTile(
-                    title: Row(
-                      children: [
-                        const Icon(Icons.access_time_filled, color: AppTheme.statusPending, size: 20),
-                        const SizedBox(width: 10),
-                        const Text(
-                          'LONGEST PENDING ISSUES',
-                          style: TextStyle(
-                            color: AppTheme.textPrimary,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ],
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'LONGEST PENDING ISSUES',
+                    style: TextStyle(
+                      color: AppTheme.textPrimary,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.0,
                     ),
-                    subtitle: Text(
-                      '${longestPending.length} Kendala Tertunda Terlama',
-                      style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11),
-                    ),
-                    childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                    shape: const Border(),
-                    collapsedShape: const Border(),
-                    children: longestPending.map((issue) => _buildMiniIssueItem(issue, isPendingType: true)).toList(),
                   ),
-                ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppTheme.statusPending.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Text(
+                      'High Priority',
+                      style: TextStyle(color: AppTheme.statusPending, fontSize: 11, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
               ),
+              const SizedBox(height: 12),
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: longestPending.length,
+                separatorBuilder: (context, index) => const SizedBox(height: 8),
+                itemBuilder: (context, index) {
+                  final issue = longestPending[index];
+                  return Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.accentYellow.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        issue.area,
+                                        style: const TextStyle(
+                                          color: AppTheme.accentYellow,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      issue.kategori,
+                                      style: TextStyle(
+                                        color: issue.kategori == 'SISTEM' ? Colors.cyanAccent : Colors.tealAccent,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  issue.issue,
+                                  style: const TextStyle(
+                                    color: AppTheme.textPrimary,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                if (issue.penyebab.isNotEmpty) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Penyebab: ${issue.penyebab}',
+                                    style: const TextStyle(
+                                      color: AppTheme.textSecondary,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: AppTheme.statusPending.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: AppTheme.statusPending.withOpacity(0.3)),
+                            ),
+                            child: Column(
+                              children: [
+                                Text(
+                                  '${issue.perulanganMasalah}',
+                                  style: const TextStyle(
+                                    color: AppTheme.statusPending,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const Text(
+                                  'Hari',
+                                  style: TextStyle(
+                                    color: AppTheme.textSecondary,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 40),
             ] else if (total == 0) ...[
               _buildEmptyState(),
             ],
@@ -507,143 +553,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
               textAlign: TextAlign.center,
               style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMiniIssueItem(Issue issue, {required bool isPendingType}) {
-    final bool isSolved = issue.status == 'solved';
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: AppTheme.secondaryNavy.withOpacity(0.3),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppTheme.borderNavy),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Row(
-                          children: [
-                            Flexible(
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.accentYellow.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  issue.area,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: AppTheme.accentYellow,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              issue.kategori,
-                              style: TextStyle(
-                                color: issue.kategori == 'SISTEM' ? Colors.cyanAccent : Colors.tealAccent,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        DateFormat('dd MMM yyyy').format(issue.tgl),
-                        style: const TextStyle(color: AppTheme.textSecondary, fontSize: 10),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    issue.issue,
-                    style: const TextStyle(
-                      color: AppTheme.textPrimary,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  if (issue.penyebab.isNotEmpty) ...[
-                    const SizedBox(height: 3),
-                    Text(
-                      'Penyebab: ${issue.penyebab}',
-                      style: const TextStyle(
-                        color: AppTheme.textSecondary,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(width: 10),
-            if (isPendingType)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppTheme.statusPending.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppTheme.statusPending.withOpacity(0.2)),
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      '${issue.perulanganMasalah}',
-                      style: const TextStyle(
-                        color: AppTheme.statusPending,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const Text(
-                      'Kali',
-                      style: TextStyle(
-                        color: AppTheme.textSecondary,
-                        fontSize: 9,
-                      ),
-                    ),
-                  ],
-                ),
-              )
-            else
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: isSolved ? AppTheme.statusSolved.withOpacity(0.1) : AppTheme.statusPending.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: isSolved ? AppTheme.statusSolved : AppTheme.statusPending,
-                    width: 1,
-                  ),
-                ),
-                child: Text(
-                  issue.status.toUpperCase(),
-                  style: TextStyle(
-                    color: isSolved ? AppTheme.statusSolved : AppTheme.statusPending,
-                    fontSize: 9,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
           ],
         ),
       ),
