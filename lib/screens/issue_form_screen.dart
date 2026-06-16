@@ -337,6 +337,17 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
                     });
                   },
                 ),
+              ListTile(
+                leading: const Icon(Icons.do_not_disturb_on_outlined, color: AppTheme.statusPending),
+                title: const Text('No Need Eviden'),
+                subtitle: const Text('Tandai bahwa issue ini tidak membutuhkan file eviden'),
+                onTap: () {
+                  Navigator.pop(context);
+                  setState(() {
+                    _evidencePath = Issue.noNeedEvidenValue;
+                  });
+                },
+              ),
             ],
           ),
         );
@@ -1004,6 +1015,77 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
   }
 
   Widget _buildEvidenceDisplay() {
+    final isNoNeedEviden = _evidencePath != null &&
+        _evidencePath!.trim().toUpperCase() == Issue.noNeedEvidenValue;
+
+    if (isNoNeedEviden) {
+      return InkWell(
+        onTap: _showImageOptions,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppTheme.secondaryNavy,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppTheme.borderNavy),
+          ),
+          child: Column(
+            children: [
+              Container(
+                height: 150,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: AppTheme.statusPending.withOpacity(0.12),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                ),
+                child: const Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.do_not_disturb_on_outlined,
+                      color: AppTheme.statusPending,
+                      size: 52,
+                    ),
+                    SizedBox(height: 10),
+                    Text(
+                      'NO NEED EVIDEN',
+                      style: TextStyle(
+                        color: AppTheme.textPrimary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Issue ini ditandai tidak memerlukan file bukti.',
+                      style: TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              ListTile(
+                title: const Text(
+                  'No Need Eviden',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                ),
+                subtitle: const Text(
+                  'Tap edit untuk mengganti ke foto, video, atau hapus penanda ini.',
+                  style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+                ),
+                trailing: IconButton(
+                  icon: const Icon(Icons.edit, color: AppTheme.accentYellow),
+                  onPressed: _showImageOptions,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     if (_evidencePath != null && 
         _evidencePath!.trim().isNotEmpty && 
         _evidencePath!.trim().toLowerCase() != 'null') {

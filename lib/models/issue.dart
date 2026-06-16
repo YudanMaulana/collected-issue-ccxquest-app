@@ -1,6 +1,8 @@
 import 'package:intl/intl.dart';
 
 class Issue {
+  static const String noNeedEvidenValue = 'NO_NEED_EVIDEN';
+
   final int? id;
   final DateTime tgl;
   final String area;
@@ -145,9 +147,14 @@ class Issue {
   List<String> get missingFields {
     final missing = <String>[];
     if (tagDetail.trim().isEmpty) missing.add('Tag Detail');
-    if (evide == null || evide!.trim().isEmpty) missing.add('Eviden');
+    if (evide == null || evide!.trim().isEmpty) {
+      missing.add('Eviden');
+    }
     if (penyebab.trim().isEmpty) missing.add('Penyebab');
     if (penanganan.trim().isEmpty) missing.add('Penanganan');
+    if (evide != null && evide!.trim().toUpperCase() == noNeedEvidenValue) {
+      missing.remove('Eviden');
+    }
     return missing;
   }
 
