@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'incomplete_issues_screen.dart';
 import '../core/theme.dart';
 import '../models/issue.dart';
 import '../repositories/issue_repository.dart';
@@ -29,18 +30,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
     try {
       final data = await widget.repository.getDashboardMetrics();
-      
-      // Use pre-computed incomplete count from server if available
-      final incompleteFromServer = data['incomplete'] as int?;
-      
-      int incompleteCount = 0;
-      if (incompleteFromServer != null) {
-        incompleteCount = incompleteFromServer;
-      } else {
-        // Fallback: fetch incomplete list the old way
-        final incompleteList = await widget.repository.getAllIssues(incompleteOnly: true);
-        incompleteCount = incompleteList.length;
-      }
+      final allIssues = await widget.repository.getAllIssues();
+      final incompleteCount = allIssues.where((item) => item.isIncomplete).length;
       
       setState(() {
         _metrics = data;
@@ -118,10 +109,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            'Ditemukan $_incompleteCount data yang belum diisi Eviden, Penyebab, atau Penanganan.',
+                            'Ditemukan $_incompleteCount data yang belum diisi Tag Detail, Eviden, Penyebab, atau Penanganan.',
                             style: const TextStyle(
                               color: AppTheme.textSecondary,
                               fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          InkWell(
+                            onTap: () async {
+                              await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => IncompleteIssuesScreen(repository: widget.repository),
+                                ),
+                              );
+                              _loadDashboardData();
+                            },
+                            child: const Text(
+                              'Buka halaman pelengkapan data',
+                              style: TextStyle(
+                                color: AppTheme.accentYellow,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ],

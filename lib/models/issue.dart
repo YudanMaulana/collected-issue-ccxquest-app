@@ -142,6 +142,17 @@ class Issue {
     );
   }
 
+  List<String> get missingFields {
+    final missing = <String>[];
+    if (tagDetail.trim().isEmpty) missing.add('Tag Detail');
+    if (evide == null || evide!.trim().isEmpty) missing.add('Eviden');
+    if (penyebab.trim().isEmpty) missing.add('Penyebab');
+    if (penanganan.trim().isEmpty) missing.add('Penanganan');
+    return missing;
+  }
+
+  bool get isIncomplete => missingFields.isNotEmpty;
+
   Map<String, dynamic> toMap() {
     return {
       if (id != null) 'id': id,

@@ -19,7 +19,7 @@ class LocalIssueRepository implements IssueRepository {
 
     return await openDatabase(
       pathString,
-      version: 3,
+      version: 4,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE issues (
@@ -34,7 +34,8 @@ class LocalIssueRepository implements IssueRepository {
             penyebab TEXT NOT NULL,
             evide TEXT,
             tag_issue TEXT,
-            kode_issue TEXT
+            kode_issue TEXT,
+            tag_detail TEXT
           )
         ''');
       },
@@ -49,6 +50,11 @@ class LocalIssueRepository implements IssueRepository {
             await db.execute('ALTER TABLE issues ADD COLUMN kode_issue TEXT');
           } catch (_) {}
           await _populateLegacyCodes(db);
+        }
+        if (oldVersion < 4) {
+          try {
+            await db.execute('ALTER TABLE issues ADD COLUMN tag_detail TEXT');
+          } catch (_) {}
         }
       },
     );
@@ -86,7 +92,8 @@ class LocalIssueRepository implements IssueRepository {
     List<dynamic> whereArgs = [];
 
     if (search != null && search.isNotEmpty) {
-      whereClauses.add('(issue LIKE ? OR penyebab LIKE ? OR penanganan LIKE ? OR kode_issue LIKE ?)');
+      whereClauses.add('(issue LIKE ? OR penyebab LIKE ? OR penanganan LIKE ? OR kode_issue LIKE ? OR tag_detail LIKE ?)');
+      whereArgs.add('%$search%');
       whereArgs.add('%$search%');
       whereArgs.add('%$search%');
       whereArgs.add('%$search%');
@@ -109,7 +116,7 @@ class LocalIssueRepository implements IssueRepository {
     }
 
     if (incompleteOnly == true) {
-      whereClauses.add('(evide IS NULL OR evide = "" OR penyebab = "" OR penanganan = "")');
+      whereClauses.add('(evide IS NULL OR evide = "" OR penyebab = "" OR penanganan = "" OR tag_detail IS NULL OR tag_detail = "")');
     }
 
     final String whereString = whereClauses.isNotEmpty ? 'WHERE ${whereClauses.join(' AND ')}' : '';
@@ -243,7 +250,7 @@ class LocalIssueRepository implements IssueRepository {
   Future<List<Map<String, String>>> getUniqueIssues() async {
     final db = await database;
     final List<Map<String, dynamic>> result = await db.rawQuery('''
-      SELECT kode_issue, issue, kategori, penyebab 
+      SELECT kode_issue, issue, kategori, penyebab, area, evide, tag_detail
       FROM issues 
       WHERE kode_issue IS NOT NULL AND kode_issue != ""
       GROUP BY kode_issue
@@ -254,6 +261,9 @@ class LocalIssueRepository implements IssueRepository {
       'issue': (row['issue'] ?? '') as String,
       'kategori': (row['kategori'] ?? '') as String,
       'penyebab': (row['penyebab'] ?? '') as String,
+      'area': (row['area'] ?? '') as String,
+      'evide': (row['evide'] ?? '') as String,
+      'tag_detail': (row['tag_detail'] ?? '') as String,
     }).toList();
   }
 

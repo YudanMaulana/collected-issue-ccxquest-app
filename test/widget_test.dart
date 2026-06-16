@@ -1,31 +1,62 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
+import 'package:collected_issues/main.dart';
+import 'package:collected_issues/models/issue.dart';
+import 'package:collected_issues/repositories/issue_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:collected_issues/main.dart';
-import 'package:collected_issues/repositories/local_issue_repository.dart';
+class _FakeIssueRepository implements IssueRepository {
+  @override
+  Future<void> clearAllIssues() async {}
+
+  @override
+  Future<void> deleteIssue(int id) async {}
+
+  @override
+  Future<String> generateNextIssueCode() async => 'CI001';
+
+  @override
+  Future<List<Issue>> getAllIssues({String? search, String? area, String? kategori, String? status, bool? incompleteOnly}) async => [];
+
+  @override
+  Future<Map<String, dynamic>> getDashboardMetrics() async => {
+        'total': 0,
+        'solved': 0,
+        'pending': 0,
+        'incomplete': 0,
+        'byArea': <String, int>{},
+        'byKategori': <String, int>{},
+        'longestPending': <Issue>[],
+      };
+
+  @override
+  Future<Issue> getIssueById(int id) async => throw UnimplementedError();
+
+  @override
+  Future<List<Map<String, String>>> getUniqueIssues() async => [];
+
+  @override
+  Future<void> importIssues(List<Issue> issues) async {}
+
+  @override
+  Future<int> insertIssue(Issue issue) async => 1;
+
+  @override
+  Future<void> updateIssue(Issue issue) async {}
+}
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(MyApp(repository: LocalIssueRepository()));
+  testWidgets('App shows PIN gate and unlocks with correct PIN', (WidgetTester tester) async {
+    await tester.pumpWidget(MyApp(repository: _FakeIssueRepository()));
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    expect(find.text('COLLECTED ISSUE'), findsOneWidget);
+    expect(find.text('Enter PIN to Access Database'), findsOneWidget);
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    for (final digit in ['1', '9', '9', '9']) {
+      await tester.tap(find.text(digit));
+      await tester.pump();
+    }
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    await tester.pumpAndSettle();
+
+    expect(find.text('DASHBOARD'), findsOneWidget);
   });
 }

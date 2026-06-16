@@ -802,32 +802,58 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
                   const Text('TAG DETAIL', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   if (_previousTagDetailsInSelectedArea.isNotEmpty) ...[
-                    SizedBox(
-                      height: 38,
-                      child: ListView(
-                        scrollDirection: Axis.horizontal,
-                        children: _previousTagDetailsInSelectedArea.map((tag) {
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 8.0),
-                            child: ActionChip(
-                              backgroundColor: AppTheme.accentYellow.withOpacity(0.15),
-                              side: const BorderSide(color: AppTheme.accentYellow),
-                              label: Text(
-                                tag,
-                                style: const TextStyle(
-                                  color: AppTheme.accentYellow,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  _tagDetailController.text = tag;
-                                });
-                              },
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppTheme.secondaryNavy.withOpacity(0.35),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppTheme.borderNavy),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'REKOMENDASI TAG DETAIL AREA $_selectedArea',
+                            style: const TextStyle(
+                              color: AppTheme.accentYellow,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
                             ),
-                          );
-                        }).toList(),
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            'Pilih salah satu saran di bawah sebelum mengetik manual.',
+                            style: TextStyle(
+                              color: AppTheme.textSecondary,
+                              fontSize: 11,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: _previousTagDetailsInSelectedArea.map((tag) {
+                              return ActionChip(
+                                backgroundColor: AppTheme.accentYellow.withOpacity(0.15),
+                                side: const BorderSide(color: AppTheme.accentYellow),
+                                label: Text(
+                                  tag,
+                                  style: const TextStyle(
+                                    color: AppTheme.accentYellow,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _tagDetailController.text = tag;
+                                  });
+                                },
+                              );
+                            }).toList(),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 8),

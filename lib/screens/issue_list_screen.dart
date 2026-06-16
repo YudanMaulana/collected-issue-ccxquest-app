@@ -694,7 +694,7 @@ class _IssueListScreenState extends State<IssueListScreen> {
                         style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
                       ),
                       subtitle: const Text(
-                        'Tampilkan issue tanpa eviden, penyebab, atau penanganan',
+                        'Tampilkan issue tanpa tag detail, eviden, penyebab, atau penanganan',
                         style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
                       ),
                       value: _incompleteOnly,
@@ -1197,10 +1197,7 @@ class _IssueListScreenState extends State<IssueListScreen> {
 
               // Incomplete warnings indicator
               () {
-                final List<String> missingFields = [];
-                if (issue.evide == null || issue.evide!.isEmpty) missingFields.add('Eviden');
-                if (issue.penyebab.isEmpty) missingFields.add('Penyebab');
-                if (issue.penanganan.isEmpty) missingFields.add('Penanganan');
+                final List<String> missingFields = issue.missingFields;
                 
                 if (missingFields.isEmpty) return const SizedBox.shrink();
                 

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'core/theme.dart';
-import 'repositories/local_issue_repository.dart';
 import 'repositories/issue_repository.dart';
 import 'screens/pin_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/issue_list_screen.dart';
+import 'screens/incomplete_issues_screen.dart';
 
 import 'repositories/http_issue_repository.dart';
 
@@ -57,6 +57,7 @@ class _MainAuthGatewayState extends State<MainAuthGateway> {
     _screens = [
       DashboardScreen(repository: widget.repository),
       IssueListScreen(repository: widget.repository),
+      IncompleteIssuesScreen(repository: widget.repository),
     ];
   }
 
@@ -75,7 +76,13 @@ class _MainAuthGatewayState extends State<MainAuthGateway> {
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
-        title: Text(_currentIndex == 0 ? 'DASHBOARD' : 'ISSUES RECORD'),
+        title: Text(
+          _currentIndex == 0
+              ? 'DASHBOARD'
+              : _currentIndex == 1
+                  ? 'ISSUES RECORD'
+                  : 'INCOMPLETE DATA',
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.lock_open, color: AppTheme.accentYellow),
@@ -123,6 +130,11 @@ class _MainAuthGatewayState extends State<MainAuthGateway> {
               icon: Icon(Icons.list_alt_outlined),
               activeIcon: Icon(Icons.list_alt, color: AppTheme.accentYellow),
               label: 'Issues',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.assignment_late_outlined),
+              activeIcon: Icon(Icons.assignment_late, color: AppTheme.accentYellow),
+              label: 'Incomplete',
             ),
           ],
         ),

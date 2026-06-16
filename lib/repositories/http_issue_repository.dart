@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import '../models/issue.dart';
@@ -109,11 +108,7 @@ class HttpIssueRepository implements IssueRepository {
     List<Issue> filtered = List.from(_cachedIssues!);
 
     if (incompleteOnly == true) {
-      filtered = filtered.where((item) => 
-        item.evide == null || item.evide!.isEmpty ||
-        item.penyebab.isEmpty ||
-        item.penanganan.isEmpty
-      ).toList();
+      filtered = filtered.where((item) => item.isIncomplete).toList();
     }
 
     if (area != null && area != 'All') {
@@ -130,7 +125,9 @@ class HttpIssueRepository implements IssueRepository {
       filtered = filtered.where((item) => 
         item.issue.toLowerCase().contains(s) || 
         item.penyebab.toLowerCase().contains(s) || 
-        item.penanganan.toLowerCase().contains(s)
+        item.penanganan.toLowerCase().contains(s) ||
+        item.tagDetail.toLowerCase().contains(s) ||
+        item.kodeIssue.toLowerCase().contains(s)
       ).toList();
     }
 
@@ -628,6 +625,7 @@ class HttpIssueRepository implements IssueRepository {
           'penyebab': item.penyebab,
           'area': item.area,
           'evide': item.evide ?? '',
+          'tag_detail': item.tagDetail,
         };
       }
     }
