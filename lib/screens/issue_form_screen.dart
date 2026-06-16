@@ -37,6 +37,7 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
   final _issueController = TextEditingController();
   final _penyebabController = TextEditingController();
   final _penangananController = TextEditingController();
+  final _tagDetailController = TextEditingController();
   
   String? _evidencePath;
   bool _isSaving = false;
@@ -142,6 +143,7 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
     _issueController.text = sourceIssue?.issue ?? '';
     _penyebabController.text = sourceIssue?.penyebab ?? '';
     _penangananController.text = widget.issue?.penanganan ?? ''; // Exclude duplicateFrom.penanganan, start new empty!
+    _tagDetailController.text = sourceIssue?.tagDetail ?? '';
     _evidencePath = widget.issue?.evide; // Only keep evidence for edits, not duplicates
     _currentKodeIssue = sourceIssue?.kodeIssue ?? ''; // Copied for duplicates too!
 
@@ -155,8 +157,22 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
     _loadUniqueIssues();
   }
 
+  List<String> get _previousTagDetailsInSelectedArea {
+    final Set<String> tags = {};
+    for (var item in _uniqueIssues) {
+      final area = item['area'] ?? '';
+      if (area.trim().toLowerCase() == _selectedArea.trim().toLowerCase()) {
+        final tag = item['tag_detail'] ?? '';
+        if (tag.trim().isNotEmpty) {
+          tags.add(tag.trim());
+        }
+      }
+    }
+    return tags.toList()..sort();
+  }
+
+
   Future<void> _loadUniqueIssues() async {
-    if (widget.issue != null || widget.duplicateFrom != null) return;
     setState(() {
       _isLoadingUniqueIssues = true;
     });
@@ -166,7 +182,9 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
       setState(() {
         _uniqueIssues = list;
         _generatedCodePreview = preview;
-        _currentKodeIssue = preview; // Default to new code
+        if (widget.issue == null && widget.duplicateFrom == null) {
+          _currentKodeIssue = preview; // Default to new code
+        }
         _isLoadingUniqueIssues = false;
       });
     } catch (_) {
@@ -181,6 +199,7 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
     _issueController.dispose();
     _penyebabController.dispose();
     _penangananController.dispose();
+    _tagDetailController.dispose();
     super.dispose();
   }
 
@@ -347,6 +366,7 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
           ? Issue.calculateTag(_issueController.text.trim())
           : _selectedTagIssue,
       kodeIssue: _currentKodeIssue,
+      tagDetail: _tagDetailController.text.trim(),
     );
 
     try {
@@ -669,6 +689,7 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
                                                 _currentKodeIssue = val;
                                                 _issueController.text = selected['issue'] ?? '';
                                                 _penyebabController.text = selected['penyebab'] ?? '';
+                                                _tagDetailController.text = selected['tag_detail'] ?? '';
                                                 _penangananController.clear();
                                                 _selectedStatus = _statuses.first; // default to 'pending'
                                                 
@@ -776,6 +797,46 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
                         _selectedTagIssue = val;
                       });
                     },
+                  ),
+                  const SizedBox(height: 20),
+                  const Text('TAG DETAIL', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  if (_previousTagDetailsInSelectedArea.isNotEmpty) ...[
+                    SizedBox(
+                      height: 38,
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        children: _previousTagDetailsInSelectedArea.map((tag) {
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8.0),
+                            child: ActionChip(
+                              backgroundColor: AppTheme.accentYellow.withOpacity(0.15),
+                              side: const BorderSide(color: AppTheme.accentYellow),
+                              label: Text(
+                                tag,
+                                style: const TextStyle(
+                                  color: AppTheme.accentYellow,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _tagDetailController.text = tag;
+                                });
+                              },
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  TextFormField(
+                    controller: _tagDetailController,
+                    decoration: const InputDecoration(
+                      hintText: 'Masukkan detail tag issue',
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Row(

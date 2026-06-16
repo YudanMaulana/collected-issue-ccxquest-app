@@ -44,6 +44,7 @@ class ExcelHelper {
       int idxLama = headers.indexWhere((h) => h.contains('LAMA') || h.contains('DURASI') || h.contains('DURATION') || h.contains('PERULANGAN') || h.contains('REPEAT'));
       int idxEvide = headers.indexWhere((h) => h.contains('EVIDE') || h.contains('FOTO') || h.contains('DOCUMENT') || h.contains('PICTURE'));
       int idxTag = headers.indexWhere((h) => h.contains('TAG') || h.contains('KLASIFIKASI') || h.contains('LABEL'));
+      int idxTagDetail = headers.indexWhere((h) => h.contains('DETAIL') && h.contains('TAG'));
 
       // If we don't find correct headers, try default indices
       if (idxTgl == -1) idxTgl = 0;
@@ -70,6 +71,7 @@ class ExcelHelper {
         String penyebabVal = idxPenyebab < row.length ? (row[idxPenyebab]?.value?.toString() ?? '') : '';
         String evideVal = idxEvide < row.length ? (row[idxEvide]?.value?.toString() ?? '') : '';
         String tagVal = idxTag != -1 && idxTag < row.length ? (row[idxTag]?.value?.toString() ?? '') : '';
+        String tagDetailVal = idxTagDetail != -1 && idxTagDetail < row.length ? (row[idxTagDetail]?.value?.toString() ?? '') : '';
 
         // Clean status
         if (statusVal.contains('solve')) {
@@ -106,6 +108,7 @@ class ExcelHelper {
           evide: evideVal.isNotEmpty ? evideVal : null,
           tagIssue: tagVal.isNotEmpty ? tagVal : Issue.calculateTag(issueVal),
           kodeIssue: kodeVal,
+          tagDetail: tagDetailVal,
         ));
       }
     }
@@ -138,6 +141,7 @@ class ExcelHelper {
       'KODE ISSUE',
       'ISSUE/KENDALA',
       'TAG ISSUE',
+      'TAG DETAIL',
       'PENANGANAN VENDOR',
       'STATUS PERBAIKAN',
       'PERULANGAN MASALAH',
@@ -167,6 +171,7 @@ class ExcelHelper {
         issue.kodeIssue,
         issue.issue,
         issue.tagIssue,
+        issue.tagDetail,
         issue.penanganan,
         issue.status,
         '${issue.perulanganMasalah} kali',
@@ -178,8 +183,8 @@ class ExcelHelper {
         final cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: r + 1));
         final String valStr = rowValues[c].toString();
         
-        // Eviden column (index 10) gets clickable formula link if it contains http/https
-        if (c == 10 && valStr.isNotEmpty && (valStr.startsWith('http://') || valStr.startsWith('https://'))) {
+        // Eviden column (index 11) gets clickable formula link if it contains http/https
+        if (c == 11 && valStr.isNotEmpty && (valStr.startsWith('http://') || valStr.startsWith('https://'))) {
           cell.value = FormulaCellValue('HYPERLINK("$valStr", "$valStr")');
         } else {
           cell.value = TextCellValue(valStr);

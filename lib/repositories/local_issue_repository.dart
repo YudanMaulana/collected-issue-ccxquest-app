@@ -19,7 +19,7 @@ class LocalIssueRepository implements IssueRepository {
 
     return await openDatabase(
       pathString,
-      version: 4,
+      version: 5,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE issues (
@@ -30,15 +30,12 @@ class LocalIssueRepository implements IssueRepository {
             issue TEXT NOT NULL,
             penanganan TEXT NOT NULL,
             status TEXT NOT NULL,
-<<<<<<< HEAD
             perulangan_masalah INTEGER NOT NULL DEFAULT 1,
-=======
-            perulangan_masalah INTEGER NOT NULL,
->>>>>>> 95fa6fef18d21218c8989d3c0f1b0c1496a4125e
             penyebab TEXT NOT NULL,
             evide TEXT,
             tag_issue TEXT,
-            kode_issue TEXT
+            kode_issue TEXT,
+            tag_detail TEXT
           )
         ''');
       },
@@ -62,6 +59,11 @@ class LocalIssueRepository implements IssueRepository {
               await db.execute('ALTER TABLE issues ADD COLUMN perulangan_masalah INTEGER DEFAULT 1');
             } catch (_) {}
           }
+        }
+        if (oldVersion < 5) {
+          try {
+            await db.execute('ALTER TABLE issues ADD COLUMN tag_detail TEXT');
+          } catch (_) {}
         }
       },
     );
@@ -314,7 +316,7 @@ class LocalIssueRepository implements IssueRepository {
   Future<List<Map<String, String>>> getUniqueIssues() async {
     final db = await database;
     final List<Map<String, dynamic>> result = await db.rawQuery('''
-      SELECT t.kode_issue, t.issue, t.kategori, t.penyebab, t.area,
+      SELECT t.kode_issue, t.issue, t.kategori, t.penyebab, t.area, t.tag_detail,
              (SELECT evide FROM issues WHERE kode_issue = t.kode_issue AND evide IS NOT NULL AND evide != "" ORDER BY id DESC LIMIT 1) as evide
       FROM issues t
       WHERE t.kode_issue IS NOT NULL AND t.kode_issue != ""
@@ -328,6 +330,7 @@ class LocalIssueRepository implements IssueRepository {
       'penyebab': (row['penyebab'] ?? '') as String,
       'area': (row['area'] ?? '') as String,
       'evide': (row['evide'] ?? '') as String,
+      'tag_detail': (row['tag_detail'] ?? '') as String,
     }).toList();
   }
 

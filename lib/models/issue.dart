@@ -13,6 +13,7 @@ class Issue {
   final String? evide; // URL or local path
   final String tagIssue; // Manual tag selection, or auto-calculated fallback
   final String kodeIssue; // Unique tracking code
+  final String tagDetail; // Detail Tag Issue
 
   Issue({
     this.id,
@@ -27,8 +28,10 @@ class Issue {
     this.evide,
     String? tagIssue,
     String? kodeIssue,
+    String? tagDetail,
   }) : this.tagIssue = tagIssue ?? calculateTag(issue),
-       this.kodeIssue = kodeIssue ?? '';
+       this.kodeIssue = kodeIssue ?? '',
+       this.tagDetail = tagDetail ?? '';
 
   // Dynamic regex tagging algorithm translated from the user's Excel formula
   static String calculateTag(String issueDesc) {
@@ -120,6 +123,7 @@ class Issue {
     String? evide,
     String? tagIssue,
     String? kodeIssue,
+    String? tagDetail,
   }) {
     return Issue(
       id: id ?? this.id,
@@ -134,6 +138,7 @@ class Issue {
       evide: evide ?? this.evide,
       tagIssue: tagIssue ?? this.tagIssue,
       kodeIssue: kodeIssue ?? this.kodeIssue,
+      tagDetail: tagDetail ?? this.tagDetail,
     );
   }
 
@@ -151,6 +156,7 @@ class Issue {
       'evide': evide,
       'tag_issue': tagIssue,
       'kode_issue': kodeIssue,
+      'tag_detail': tagDetail,
     };
   }
 
@@ -176,6 +182,7 @@ class Issue {
       evide: (map['evide'] ?? map['EVIDE'] ?? map['eviden']) as String?,
       tagIssue: (map['tag_issue'] ?? map['TAG ISSUE'] ?? map['TAG\u0020ISSUE']) as String?,
       kodeIssue: (map['kode_issue'] ?? map['KODE ISSUE'] ?? map['kode_kendala'] ?? '') as String,
+      tagDetail: (map['tag_detail'] ?? map['TAG DETAIL'] ?? map['tag_detail_issue'] ?? map['detail_tag_issue'] ?? '') as String,
     );
   }
 }

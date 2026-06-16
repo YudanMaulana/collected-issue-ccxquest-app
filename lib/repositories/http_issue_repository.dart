@@ -227,6 +227,7 @@ class HttpIssueRepository implements IssueRepository {
         request.fields['kode_issue'] = finalIssue.kodeIssue;
         request.fields['issue'] = finalIssue.issue;
         request.fields['tag_issue'] = finalIssue.tagIssue;
+        request.fields['tag_detail'] = finalIssue.tagDetail;
         request.fields['penanganan'] = finalIssue.penanganan;
         request.fields['status'] = finalIssue.status;
         request.fields['perulangan_masalah'] = finalIssue.perulanganMasalah.toString();
@@ -352,6 +353,7 @@ class HttpIssueRepository implements IssueRepository {
           request.fields['kode_issue'] = payloadIssue.kodeIssue;
           request.fields['issue'] = payloadIssue.issue;
           request.fields['tag_issue'] = payloadIssue.tagIssue;
+          request.fields['tag_detail'] = payloadIssue.tagDetail;
           request.fields['penanganan'] = payloadIssue.penanganan;
           request.fields['status'] = payloadIssue.status;
           request.fields['perulangan_masalah'] = payloadIssue.perulanganMasalah.toString();

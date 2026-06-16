@@ -1270,6 +1270,25 @@ class _IssueListScreenState extends State<IssueListScreen> {
                       ),
                     ),
                   ),
+                  if (issue.tagDetail.isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppTheme.accentYellow.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: AppTheme.accentYellow.withOpacity(0.3)),
+                      ),
+                      child: Text(
+                        issue.tagDetail,
+                        style: const TextStyle(
+                          color: AppTheme.accentYellow,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
                   const SizedBox(width: 8),
 
                   // Duration Badge
