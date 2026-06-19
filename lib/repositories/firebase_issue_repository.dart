@@ -18,11 +18,7 @@ class FirebaseIssueRepository implements IssueRepository {
 
     List<Issue> results = List.from(_mockFirebaseStorage);
     if (incompleteOnly == true) {
-      results = results.where((item) => 
-        item.evide == null || item.evide!.isEmpty ||
-        item.penyebab.isEmpty ||
-        item.penanganan.isEmpty
-      ).toList();
+      results = results.where((item) => item.isIncomplete).toList();
     }
     if (search != null && search.isNotEmpty) {
       final s = search.toLowerCase();

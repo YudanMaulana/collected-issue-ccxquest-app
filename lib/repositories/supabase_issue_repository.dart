@@ -44,11 +44,7 @@ class SupabaseIssueRepository implements IssueRepository {
     List<Issue> filtered = List.from(_cachedIssues!);
 
     if (incompleteOnly == true) {
-      filtered = filtered.where((item) => 
-        item.evide == null || item.evide!.isEmpty ||
-        item.penyebab.isEmpty ||
-        item.penanganan.isEmpty
-      ).toList();
+      filtered = filtered.where((item) => item.isIncomplete).toList();
     }
 
     if (area != null && area != 'All') {
@@ -88,6 +84,7 @@ class SupabaseIssueRepository implements IssueRepository {
   /// Uploads a local file to Supabase Storage and returns its public URL
   Future<String?> _uploadEvidence(String? localPath) async {
     if (localPath == null || localPath.isEmpty) return null;
+    if (localPath.trim().toUpperCase() == Issue.noNeedEvidenValue) return localPath;
     if (localPath.startsWith('http')) return localPath; // Already uploaded
 
     final file = File(localPath);
@@ -119,7 +116,7 @@ class SupabaseIssueRepository implements IssueRepository {
 
     // 1. Upload evidence photo if it is local
     String? onlineUrl = finalIssue.evide;
-    if (finalIssue.evide != null && !finalIssue.evide!.startsWith('http')) {
+    if (finalIssue.hasUploadableLocalEvidence) {
       onlineUrl = await _uploadEvidence(finalIssue.evide);
     }
 
@@ -139,7 +136,7 @@ class SupabaseIssueRepository implements IssueRepository {
 
     // 1. Upload evidence photo if it is local
     String? onlineUrl = issue.evide;
-    if (issue.evide != null && !issue.evide!.startsWith('http')) {
+    if (issue.hasUploadableLocalEvidence) {
       onlineUrl = await _uploadEvidence(issue.evide);
     }
 

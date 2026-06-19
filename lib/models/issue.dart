@@ -35,6 +35,31 @@ class Issue {
        this.kodeIssue = kodeIssue ?? '',
        this.tagDetail = tagDetail ?? '';
 
+  bool get isNoNeedEviden {
+    final normalized = evide?.trim().toUpperCase().replaceAll(' ', '_');
+    return normalized == noNeedEvidenValue ||
+        normalized == 'NO_NEED_EVIDENCE' ||
+        normalized == 'NONE';
+  }
+
+  bool get hasEvidence {
+    final value = evide?.trim();
+    if (value == null || value.isEmpty || value.toLowerCase() == 'null') {
+      return false;
+    }
+    return true;
+  }
+
+  bool get needsEvidence => !isNoNeedEviden;
+
+  bool get hasUploadableLocalEvidence {
+    final value = evide?.trim();
+    if (value == null || value.isEmpty || isNoNeedEviden) {
+      return false;
+    }
+    return !value.startsWith('http://') && !value.startsWith('https://');
+  }
+
   // Dynamic regex tagging algorithm translated from the user's Excel formula
   static String calculateTag(String issueDesc) {
     if (issueDesc.isEmpty) return 'Lain-lain';
@@ -147,21 +172,11 @@ class Issue {
   List<String> get missingFields {
     final missing = <String>[];
     if (tagDetail.trim().isEmpty) missing.add('Tag Detail');
-    
-    final String? cleanEvide = evide?.trim().toUpperCase().replaceAll(' ', '_');
-    final bool hasNoNeedEviden = cleanEvide == noNeedEvidenValue || 
-                                 cleanEvide == 'NO_NEED_EVIDENCE' ||
-                                 cleanEvide == 'NONE';
-
-    if ((evide == null || evide!.trim().isEmpty) && !hasNoNeedEviden) {
+    if (needsEvidence && !hasEvidence) {
       missing.add('Eviden');
     }
     if (penyebab.trim().isEmpty) missing.add('Penyebab');
     if (penanganan.trim().isEmpty) missing.add('Penanganan');
-    
-    if (hasNoNeedEviden) {
-      missing.remove('Eviden');
-    }
     return missing;
   }
 

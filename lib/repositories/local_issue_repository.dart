@@ -115,10 +115,6 @@ class LocalIssueRepository implements IssueRepository {
       whereArgs.add(status);
     }
 
-    if (incompleteOnly == true) {
-      whereClauses.add('(evide IS NULL OR evide = "" OR penyebab = "" OR penanganan = "" OR tag_detail IS NULL OR tag_detail = "")');
-    }
-
     final String whereString = whereClauses.isNotEmpty ? 'WHERE ${whereClauses.join(' AND ')}' : '';
     
     final List<Map<String, dynamic>> maps = await db.rawQuery(
@@ -126,9 +122,15 @@ class LocalIssueRepository implements IssueRepository {
       whereArgs,
     );
 
-    return List.generate(maps.length, (i) {
+    var issues = List.generate(maps.length, (i) {
       return Issue.fromMap(maps[i]);
     });
+
+    if (incompleteOnly == true) {
+      issues = issues.where((item) => item.isIncomplete).toList();
+    }
+
+    return issues;
   }
 
   @override

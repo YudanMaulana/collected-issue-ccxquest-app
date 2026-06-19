@@ -211,7 +211,7 @@ class HttpIssueRepository implements IssueRepository {
     final String? localPath = finalIssue.evide;
 
     try {
-      if (localPath != null && !localPath.startsWith('http') && localPath.isNotEmpty) {
+      if (finalIssue.hasUploadableLocalEvidence) {
         final url = '$baseUrl/issues';
         print('[HttpIssueRepository] Mengirim Multipart POST (dengan file lokal) ke: $url');
         
@@ -232,7 +232,7 @@ class HttpIssueRepository implements IssueRepository {
         request.fields['penyebab'] = finalIssue.penyebab;
         request.fields['month'] = _getMonthString(finalIssue.tgl);
 
-        final ext = localPath.split('.').last.toLowerCase();
+        final ext = localPath!.split('.').last.toLowerCase();
         final isVideo = ext == 'mp4' || ext == 'mov' || ext == 'avi' || ext == 'mkv' || ext == 'webm' || ext == '3gp';
         print('[HttpIssueRepository] Melampirkan file ${isVideo ? 'video' : 'gambar'}: $localPath');
         final mimeSub = (ext == 'png' || ext == 'webp' || ext == 'gif' || ext == 'heic' || ext == 'heif') ? ext : 'jpeg';
@@ -338,7 +338,7 @@ class HttpIssueRepository implements IssueRepository {
         final String? localPath = payloadIssue.evide;
         final url = '$baseUrl/issues/$targetId';
 
-        if (localPath != null && !localPath.startsWith('http') && localPath.isNotEmpty) {
+        if (payloadIssue.hasUploadableLocalEvidence) {
           print('[HttpIssueRepository] Mengirim Multipart PUT ke: $url');
           
           var request = http.MultipartRequest('PUT', Uri.parse(url));
@@ -358,7 +358,7 @@ class HttpIssueRepository implements IssueRepository {
           request.fields['penyebab'] = payloadIssue.penyebab;
           request.fields['month'] = _getMonthString(payloadIssue.tgl);
 
-          final ext = localPath.split('.').last.toLowerCase();
+          final ext = localPath!.split('.').last.toLowerCase();
           final isVideo = ext == 'mp4' || ext == 'mov' || ext == 'avi' || ext == 'mkv' || ext == 'webm' || ext == '3gp';
           print('[HttpIssueRepository] Melampirkan file ${isVideo ? 'video' : 'gambar'}: $localPath');
           final mimeSub = (ext == 'png' || ext == 'webp' || ext == 'gif' || ext == 'heic' || ext == 'heif') ? ext : 'jpeg';
