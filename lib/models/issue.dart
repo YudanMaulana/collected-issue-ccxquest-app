@@ -147,12 +147,19 @@ class Issue {
   List<String> get missingFields {
     final missing = <String>[];
     if (tagDetail.trim().isEmpty) missing.add('Tag Detail');
-    if (evide == null || evide!.trim().isEmpty) {
+    
+    final String? cleanEvide = evide?.trim().toUpperCase().replaceAll(' ', '_');
+    final bool hasNoNeedEviden = cleanEvide == noNeedEvidenValue || 
+                                 cleanEvide == 'NO_NEED_EVIDENCE' ||
+                                 cleanEvide == 'NONE';
+
+    if ((evide == null || evide!.trim().isEmpty) && !hasNoNeedEviden) {
       missing.add('Eviden');
     }
     if (penyebab.trim().isEmpty) missing.add('Penyebab');
     if (penanganan.trim().isEmpty) missing.add('Penanganan');
-    if (evide != null && evide!.trim().toUpperCase() == noNeedEvidenValue) {
+    
+    if (hasNoNeedEviden) {
       missing.remove('Eviden');
     }
     return missing;

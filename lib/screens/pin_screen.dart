@@ -198,9 +198,22 @@ class _PinScreenState extends State<PinScreen> with SingleTickerProviderStateMix
                   ],
                 ),
               ),
-              const Spacer(),
-            ],
-          ),
+                const Spacer(),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(
+                    'Developed by IT Chocolatos X-Quest • Yudan Maulana',
+                    style: TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
         ),
       ),
     );

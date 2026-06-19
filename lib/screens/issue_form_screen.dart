@@ -1015,8 +1015,8 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
   }
 
   Widget _buildEvidenceDisplay() {
-    final isNoNeedEviden = _evidencePath != null &&
-        _evidencePath!.trim().toUpperCase() == Issue.noNeedEvidenValue;
+    final String? cleanPath = _evidencePath?.trim().toUpperCase().replaceAll(' ', '_');
+    final isNoNeedEviden = cleanPath == Issue.noNeedEvidenValue || cleanPath == 'NO_NEED_EVIDENCE';
 
     if (isNoNeedEviden) {
       return InkWell(

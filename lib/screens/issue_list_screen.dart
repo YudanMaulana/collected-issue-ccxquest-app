@@ -1232,79 +1232,85 @@ class _IssueListScreenState extends State<IssueListScreen> {
 
               // Bottom Line: Badges + Action Buttons
               Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // Category Badge
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: issue.kategori == 'SISTEM' ? Colors.cyan.withOpacity(0.1) : Colors.teal.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      issue.kategori,
-                      style: TextStyle(
-                        color: issue.kategori == 'SISTEM' ? Colors.cyanAccent : Colors.tealAccent,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-
-                  // Tag Issue Badge
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: AppTheme.accentYellow.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      issue.tagIssue,
-                      style: const TextStyle(
-                        color: AppTheme.accentYellow,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  if (issue.tagDetail.isNotEmpty) ...[
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: AppTheme.accentYellow.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: AppTheme.accentYellow.withOpacity(0.3)),
-                      ),
-                      child: Text(
-                        issue.tagDetail,
-                        style: const TextStyle(
-                          color: AppTheme.accentYellow,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
+                  Expanded(
+                    child: Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        // Category Badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: issue.kategori == 'SISTEM' ? Colors.cyan.withOpacity(0.1) : Colors.teal.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            issue.kategori,
+                            style: TextStyle(
+                              color: issue.kategori == 'SISTEM' ? Colors.cyanAccent : Colors.tealAccent,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                  ],
-                  const SizedBox(width: 8),
 
-                  // Duration Badge
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: AppTheme.textSecondary.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      '${issue.perulanganMasalah} Kali',
-                      style: const TextStyle(
-                        color: AppTheme.textSecondary,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
+                        // Tag Issue Badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppTheme.accentYellow.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            issue.tagIssue,
+                            style: const TextStyle(
+                              color: AppTheme.accentYellow,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        if (issue.tagDetail.isNotEmpty)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: AppTheme.accentYellow.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: AppTheme.accentYellow.withOpacity(0.3)),
+                            ),
+                            child: Text(
+                              issue.tagDetail,
+                              style: const TextStyle(
+                                color: AppTheme.accentYellow,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+
+                        // Duration Badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppTheme.textSecondary.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            '${issue.perulanganMasalah} Kali',
+                            style: const TextStyle(
+                              color: AppTheme.textSecondary,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const Spacer(),
+                  const SizedBox(width: 8),
 
                   // Status Badge
                   Container(
@@ -1318,6 +1324,7 @@ class _IssueListScreenState extends State<IssueListScreen> {
                       ),
                     ),
                     child: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
                           isSolved ? Icons.check : Icons.access_time,
@@ -1347,36 +1354,38 @@ class _IssueListScreenState extends State<IssueListScreen> {
 
   Widget _buildEmptyCatalog() {
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.hourglass_empty, size: 70, color: AppTheme.borderNavy),
-            const SizedBox(height: 16),
-            const Text(
-              'No issues found matching filters',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Try clearing your search query or modifying filters in the list.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
-            ),
-            if (_selectedFilterDate != null) ...[
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                onPressed: _addNewIssue,
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text('TAMBAH ISSUE DI TANGGAL INI', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.hourglass_empty, size: 70, color: AppTheme.borderNavy),
+              const SizedBox(height: 16),
+              const Text(
+                'No issues found matching filters',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
               ),
+              const SizedBox(height: 8),
+              const Text(
+                'Try clearing your search query or modifying filters in the list.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+              ),
+              if (_selectedFilterDate != null) ...[
+                const SizedBox(height: 24),
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: _addNewIssue,
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('TAMBAH ISSUE DI TANGGAL INI', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

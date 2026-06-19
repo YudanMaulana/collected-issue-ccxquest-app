@@ -23,6 +23,7 @@ class _IncompleteIssuesScreenState extends State<IncompleteIssuesScreen> {
     'Penanganan': false,
   };
   Set<String> _activeFieldFilters = {};
+  bool _isFilterExpanded = false;
 
   @override
   void initState() {
@@ -107,40 +108,68 @@ class _IncompleteIssuesScreenState extends State<IncompleteIssuesScreen> {
   }
 
   Widget _buildCompactFilterTile(String label, IconData icon, Color color) {
-    return CheckboxListTile(
-      value: _draftFieldFilters[label] ?? false,
-      activeColor: AppTheme.accentYellow,
-      checkColor: AppTheme.primaryNavy,
-      contentPadding: EdgeInsets.zero,
-      dense: true,
-      controlAffinity: ListTileControlAffinity.leading,
-      title: Row(
-        children: [
-          Icon(icon, color: color, size: 16),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              '$label (${_countByField(label)})',
-              style: const TextStyle(
-                color: AppTheme.textPrimary,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
+    final isSelected = _draftFieldFilters[label] ?? false;
+    return Material(
+      type: MaterialType.transparency,
+      child: InkWell(
+        onTap: () {
+          setState(() {
+            _draftFieldFilters[label] = !isSelected;
+          });
+        },
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Checkbox(
+                value: isSelected,
+                activeColor: AppTheme.accentYellow,
+                checkColor: AppTheme.primaryNavy,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                visualDensity: VisualDensity.compact,
+                onChanged: (value) {
+                  setState(() {
+                    _draftFieldFilters[label] = value ?? false;
+                  });
+                },
               ),
-            ),
+              const SizedBox(width: 4),
+              Icon(icon, color: color, size: 16),
+              const SizedBox(width: 6),
+              Text(
+                '$label (${_countByField(label)})',
+                style: const TextStyle(
+                  color: AppTheme.textPrimary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
-      onChanged: (value) {
-        setState(() {
-          _draftFieldFilters[label] = value ?? false;
-        });
-      },
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final visibleIssues = _filteredIssues;
+
+    final filterFields = [
+      {'label': 'Tag Detail', 'icon': Icons.sell_outlined, 'color': AppTheme.accentYellow},
+      {'label': 'Eviden', 'icon': Icons.image_outlined, 'color': Colors.lightBlueAccent},
+      {'label': 'Penyebab', 'icon': Icons.help_outline, 'color': Colors.orangeAccent},
+      {'label': 'Penanganan', 'icon': Icons.build_outlined, 'color': Colors.greenAccent},
+    ];
+
+    final sortedFields = List.from(filterFields)
+      ..sort((a, b) {
+        final countA = _countByField(a['label'] as String);
+        final countB = _countByField(b['label'] as String);
+        return countB.compareTo(countA);
+      });
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -158,81 +187,144 @@ class _IncompleteIssuesScreenState extends State<IncompleteIssuesScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'HALAMAN DATA BELUM LENGKAP',
-                          style: TextStyle(
-                            color: AppTheme.textPrimary,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.8,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        const Text(
-                          'Buka data yang masih kosong lalu lengkapi Tag Detail, Eviden, Penyebab, atau Penanganan.',
-                          style: TextStyle(
-                            color: AppTheme.textSecondary,
-                            fontSize: 12,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: AppTheme.cardBg,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: AppTheme.borderNavy),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Total incomplete: ${_issues.length}',
-                                style: const TextStyle(
-                                  color: AppTheme.textPrimary,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.bold,
+                        AnimatedSize(
+                          duration: const Duration(milliseconds: 200),
+                          curve: Curves.easeInOut,
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: AppTheme.cardBg,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppTheme.borderNavy),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                InkWell(
+                                  onTap: () {
+                                    setState(() {
+                                      _isFilterExpanded = !_isFilterExpanded;
+                                    });
+                                  },
+                                  borderRadius: BorderRadius.circular(6),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            const Icon(
+                                              Icons.filter_list_alt,
+                                              color: AppTheme.accentYellow,
+                                              size: 18,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            const Text(
+                                              'Filter & Ringkasan',
+                                              style: TextStyle(
+                                                color: AppTheme.textPrimary,
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        Icon(
+                                          _isFilterExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                                          color: AppTheme.textSecondary,
+                                          size: 20,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 10),
-                              _buildCompactFilterTile('Tag Detail', Icons.sell_outlined, AppTheme.accentYellow),
-                              _buildCompactFilterTile('Eviden', Icons.image_outlined, Colors.lightBlueAccent),
-                              _buildCompactFilterTile('Penyebab', Icons.help_outline, Colors.orangeAccent),
-                              _buildCompactFilterTile('Penanganan', Icons.build_outlined, Colors.greenAccent),
-                              const SizedBox(height: 8),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: OutlinedButton(
-                                      onPressed: _clearFilters,
-                                      style: OutlinedButton.styleFrom(
-                                        foregroundColor: AppTheme.textSecondary,
-                                        side: const BorderSide(color: AppTheme.borderNavy),
+                                if (_isFilterExpanded) ...[
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    'Total incomplete: ${_issues.length}',
+                                    style: const TextStyle(
+                                      color: AppTheme.textPrimary,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  SingleChildScrollView(
+                                    scrollDirection: Axis.horizontal,
+                                    child: Row(
+                                      children: sortedFields.map((field) {
+                                        final isLast = field == sortedFields.last;
+                                        return Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            _buildCompactFilterTile(
+                                              field['label'] as String,
+                                              field['icon'] as IconData,
+                                              field['color'] as Color,
+                                            ),
+                                            if (!isLast) const SizedBox(width: 8),
+                                          ],
+                                        );
+                                      }).toList(),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: OutlinedButton(
+                                          onPressed: _clearFilters,
+                                          style: OutlinedButton.styleFrom(
+                                            foregroundColor: AppTheme.textSecondary,
+                                            side: const BorderSide(color: AppTheme.borderNavy),
+                                          ),
+                                          child: const Text('Reset'),
+                                        ),
                                       ),
-                                      child: const Text('Reset'),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: ElevatedButton(
+                                          onPressed: _applyFilters,
+                                          child: const Text('Terapkan'),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  if (_activeFieldFilters.isNotEmpty) ...[
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'Filter aktif: ${_activeFieldFilters.join(', ')}',
+                                      style: const TextStyle(
+                                        color: AppTheme.textSecondary,
+                                        fontSize: 11,
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: ElevatedButton(
-                                      onPressed: _applyFilters,
-                                      child: const Text('Terapkan'),
+                                  ],
+                                ] else ...[
+                                  if (_activeFieldFilters.isNotEmpty) ...[
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'Filter aktif: ${_activeFieldFilters.join(', ')}',
+                                      style: const TextStyle(
+                                        color: AppTheme.textSecondary,
+                                        fontSize: 11,
+                                      ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                              if (_activeFieldFilters.isNotEmpty) ...[
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Filter aktif: ${_activeFieldFilters.join(', ')}',
-                                  style: const TextStyle(
-                                    color: AppTheme.textSecondary,
-                                    fontSize: 11,
-                                  ),
-                                ),
+                                  ] else ...[
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      'Total incomplete: ${_issues.length} | Ketuk untuk memfilter',
+                                      style: const TextStyle(
+                                        color: AppTheme.textSecondary,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ]
+                                ]
                               ],
-                            ],
+                            ),
                           ),
                         ),
                         const SizedBox(height: 8),
