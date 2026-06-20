@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 import '../core/theme.dart';
 import '../models/issue.dart';
 import '../repositories/issue_repository.dart';
+import '../repositories/http_issue_repository.dart';
 import 'package:url_launcher/url_launcher.dart';
 class IssueFormScreen extends StatefulWidget {
   final IssueRepository repository;
@@ -99,9 +100,27 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
     MapEntry(Issue.syncFieldEviden, 'Sinkron Eviden'),
   ];
 
-  String get _syncSummaryLabel {
-    if (_syncFields.isEmpty) return 'Sinkron Off';
-    return 'Sinkron ${_syncFields.length}';
+  String _resolveEvidenceUrl(String rawUrl) {
+    try {
+      final parsedUrl = Uri.parse(rawUrl);
+      if (!parsedUrl.hasScheme) return rawUrl;
+
+      if (parsedUrl.path.startsWith('/uploads/') &&
+          widget.repository is HttpIssueRepository) {
+        final repository = widget.repository as HttpIssueRepository;
+        final apiUri = Uri.parse(repository.baseUrl);
+        final baseUri = apiUri.replace(path: '', query: null, fragment: null);
+        return baseUri.resolveUri(Uri(path: parsedUrl.path)).toString();
+      }
+    } catch (_) {}
+    return rawUrl;
+  }
+
+  Map<String, String>? _networkImageHeaders(String url) {
+    if (url.contains('ngrok')) {
+      return const <String, String>{'ngrok-skip-browser-warning': 'true'};
+    }
+    return null;
   }
 
   @override
@@ -1132,6 +1151,7 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
         _evidencePath!.trim().toLowerCase() != 'null') {
       
       final isUrl = _evidencePath!.startsWith('http://') || _evidencePath!.startsWith('https://');
+      final resolvedUrl = isUrl ? _resolveEvidenceUrl(_evidencePath!) : _evidencePath!;
       final lowerPath = _evidencePath!.toLowerCase();
       
       bool isLocalFileExists = false;
@@ -1195,7 +1215,7 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
                                 ),
                                 onPressed: () async {
                                   try {
-                                    final url = Uri.parse(_evidencePath!);
+                                    final url = Uri.parse(resolvedUrl);
                                     final isNgrok = url.host.contains('ngrok');
                                     if (await canLaunchUrl(url)) {
                                       if (isNgrok) {
@@ -1253,7 +1273,7 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
                                     ),
                                     onPressed: () async {
                                       try {
-                                        final url = Uri.parse(_evidencePath!);
+                                        final url = Uri.parse(resolvedUrl);
                                         if (await canLaunchUrl(url)) {
                                           await launchUrl(url, mode: LaunchMode.externalApplication);
                                         }
@@ -1269,15 +1289,52 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
                               ),
                             )
                           : Image.network(
-                              _evidencePath!,
+                              resolvedUrl,
                               height: 200,
                               width: double.infinity,
                               fit: BoxFit.cover,
+                              headers: _networkImageHeaders(resolvedUrl),
+                              loadingBuilder: (context, child, progress) {
+                                if (progress == null) return child;
+                                return Container(
+                                  height: 200,
+                                  color: AppTheme.primaryNavy,
+                                  child: const Center(
+                                    child: CircularProgressIndicator(
+                                      color: AppTheme.accentYellow,
+                                    ),
+                                  ),
+                                );
+                              },
                               errorBuilder: (context, error, stackTrace) => Container(
                                 height: 200,
                                 color: AppTheme.primaryNavy,
-                                child: const Center(
-                                  child: Icon(Icons.broken_image, color: Colors.redAccent, size: 50),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(Icons.broken_image, color: Colors.redAccent, size: 50),
+                                    const SizedBox(height: 8),
+                                    const Text(
+                                      'Preview gambar gagal dimuat',
+                                      style: TextStyle(
+                                        color: AppTheme.textPrimary,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    TextButton(
+                                      onPressed: () async {
+                                        try {
+                                          final url = Uri.parse(resolvedUrl);
+                                          if (await canLaunchUrl(url)) {
+                                            await launchUrl(url, mode: LaunchMode.externalApplication);
+                                          }
+                                        } catch (_) {}
+                                      },
+                                      child: const Text('Buka file'),
+                                    ),
+                                  ],
                                 ),
                               ),
                             )))
@@ -1431,13 +1488,72 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
   }
 
   Widget _buildSyncFab() {
-    return FloatingActionButton.extended(
+    final hasSync = _syncFields.isNotEmpty;
+    return FloatingActionButton(
       heroTag: 'syncFab',
-      backgroundColor: _syncFields.isEmpty ? AppTheme.secondaryNavy : AppTheme.accentYellow,
-      foregroundColor: _syncFields.isEmpty ? AppTheme.textPrimary : AppTheme.primaryNavy,
+      backgroundColor: Colors.transparent,
+      elevation: 0,
       onPressed: _showSyncOptionsPopup,
-      icon: Icon(_syncFields.isEmpty ? Icons.sync_disabled : Icons.sync),
-      label: Text(_syncSummaryLabel),
+      child: Container(
+        width: 64,
+        height: 64,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: LinearGradient(
+            colors: hasSync
+                ? [AppTheme.accentYellow, const Color(0xFFFFD86B)]
+                : [AppTheme.secondaryNavy, AppTheme.primaryNavy],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          border: Border.all(
+            color: hasSync ? AppTheme.accentYellow : AppTheme.borderNavy,
+            width: 1.6,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: (hasSync ? AppTheme.accentYellow : AppTheme.primaryNavy)
+                  .withOpacity(0.35),
+              blurRadius: 18,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Stack(
+          clipBehavior: Clip.none,
+          alignment: Alignment.center,
+          children: [
+            Icon(
+              hasSync ? Icons.sync : Icons.tune,
+              color: hasSync ? AppTheme.primaryNavy : AppTheme.accentYellow,
+              size: 28,
+            ),
+            Positioned(
+              top: -2,
+              right: -2,
+              child: Container(
+                width: 22,
+                height: 22,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: hasSync ? AppTheme.primaryNavy : AppTheme.cardBg,
+                  border: Border.all(color: AppTheme.accentYellow, width: 1.4),
+                ),
+                child: Center(
+                  child: Text(
+                    hasSync ? _syncFields.length.toString() : '0',
+                    style: TextStyle(
+                      color: hasSync ? AppTheme.accentYellow : AppTheme.textSecondary,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
