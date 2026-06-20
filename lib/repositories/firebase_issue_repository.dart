@@ -61,10 +61,21 @@ class FirebaseIssueRepository implements IssueRepository {
   }
 
   @override
-  Future<void> updateIssue(Issue issue) async {
+  Future<void> updateIssue(Issue issue, {Set<String> syncFields = const {}}) async {
     final index = _mockFirebaseStorage.indexWhere((element) => element.id == issue.id);
     if (index != -1) {
       _mockFirebaseStorage[index] = issue;
+
+      if (syncFields.isNotEmpty && issue.kodeIssue.trim().isNotEmpty) {
+        for (var i = 0; i < _mockFirebaseStorage.length; i++) {
+          final current = _mockFirebaseStorage[i];
+          if (current.id != issue.id &&
+              current.kodeIssue.trim().toUpperCase() == issue.kodeIssue.trim().toUpperCase()) {
+            _mockFirebaseStorage[i] = current.copySyncFieldsFrom(issue, syncFields);
+          }
+        }
+      }
+
       await recalculateDurations();
     }
   }

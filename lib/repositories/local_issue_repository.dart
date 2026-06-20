@@ -167,7 +167,7 @@ class LocalIssueRepository implements IssueRepository {
   }
 
   @override
-  Future<void> updateIssue(Issue issue) async {
+  Future<void> updateIssue(Issue issue, {Set<String> syncFields = const {}}) async {
     final db = await database;
     await db.update(
       'issues',
@@ -175,6 +175,19 @@ class LocalIssueRepository implements IssueRepository {
       where: 'id = ?',
       whereArgs: [issue.id],
     );
+
+    if (syncFields.isNotEmpty && issue.kodeIssue.trim().isNotEmpty) {
+      final syncData = issue.buildSyncUpdateMap(syncFields);
+      if (syncData.isNotEmpty) {
+        await db.update(
+          'issues',
+          syncData,
+          where: 'kode_issue = ? AND id != ?',
+          whereArgs: [issue.kodeIssue, issue.id ?? -1],
+        );
+      }
+    }
+
     await recalculateDurations();
   }
 

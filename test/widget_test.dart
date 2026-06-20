@@ -40,7 +40,7 @@ class _FakeIssueRepository implements IssueRepository {
   Future<int> insertIssue(Issue issue) async => 1;
 
   @override
-  Future<void> updateIssue(Issue issue) async {}
+  Future<void> updateIssue(Issue issue, {Set<String> syncFields = const {}}) async {}
 }
 
 void main() {

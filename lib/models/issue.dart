@@ -2,6 +2,15 @@ import 'package:intl/intl.dart';
 
 class Issue {
   static const String noNeedEvidenValue = 'NO_NEED_EVIDEN';
+  static const String syncFieldArea = 'area';
+  static const String syncFieldKategori = 'kategori';
+  static const String syncFieldIssue = 'issue';
+  static const String syncFieldTagIssue = 'tag_issue';
+  static const String syncFieldTagDetail = 'tag_detail';
+  static const String syncFieldPenanganan = 'penanganan';
+  static const String syncFieldPenyebab = 'penyebab';
+  static const String syncFieldStatus = 'status';
+  static const String syncFieldEviden = 'evide';
 
   final int? id;
   final DateTime tgl;
@@ -178,6 +187,34 @@ class Issue {
     if (penyebab.trim().isEmpty) missing.add('Penyebab');
     if (penanganan.trim().isEmpty) missing.add('Penanganan');
     return missing;
+  }
+
+  Issue copySyncFieldsFrom(Issue source, Set<String> syncFields) {
+    return copyWith(
+      area: syncFields.contains(syncFieldArea) ? source.area : area,
+      kategori: syncFields.contains(syncFieldKategori) ? source.kategori : kategori,
+      issue: syncFields.contains(syncFieldIssue) ? source.issue : issue,
+      tagIssue: syncFields.contains(syncFieldTagIssue) ? source.tagIssue : tagIssue,
+      tagDetail: syncFields.contains(syncFieldTagDetail) ? source.tagDetail : tagDetail,
+      penanganan: syncFields.contains(syncFieldPenanganan) ? source.penanganan : penanganan,
+      penyebab: syncFields.contains(syncFieldPenyebab) ? source.penyebab : penyebab,
+      status: syncFields.contains(syncFieldStatus) ? source.status : status,
+      evide: syncFields.contains(syncFieldEviden) ? source.evide : evide,
+    );
+  }
+
+  Map<String, dynamic> buildSyncUpdateMap(Set<String> syncFields) {
+    final data = <String, dynamic>{};
+    if (syncFields.contains(syncFieldArea)) data['area'] = area;
+    if (syncFields.contains(syncFieldKategori)) data['kategori'] = kategori;
+    if (syncFields.contains(syncFieldIssue)) data['issue'] = issue;
+    if (syncFields.contains(syncFieldTagIssue)) data['tag_issue'] = tagIssue;
+    if (syncFields.contains(syncFieldTagDetail)) data['tag_detail'] = tagDetail;
+    if (syncFields.contains(syncFieldPenanganan)) data['penanganan'] = penanganan;
+    if (syncFields.contains(syncFieldPenyebab)) data['penyebab'] = penyebab;
+    if (syncFields.contains(syncFieldStatus)) data['status'] = status;
+    if (syncFields.contains(syncFieldEviden)) data['evide'] = evide;
+    return data;
   }
 
   bool get isIncomplete => missingFields.isNotEmpty;

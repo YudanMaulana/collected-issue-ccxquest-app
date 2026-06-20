@@ -41,6 +41,7 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
   
   String? _evidencePath;
   bool _isSaving = false;
+  final Set<String> _syncFields = <String>{};
 
   // Unique Issue tracking & duplication states
   bool _isDuplicateMode = false;
@@ -85,6 +86,17 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
     'TIM IMAJI',
     'IT SUPPORT',
     'OFFICER',
+  ];
+  final List<MapEntry<String, String>> _syncableFields = const [
+    MapEntry(Issue.syncFieldArea, 'Sinkron Area'),
+    MapEntry(Issue.syncFieldIssue, 'Sinkron Issue'),
+    MapEntry(Issue.syncFieldKategori, 'Sinkron Kategori'),
+    MapEntry(Issue.syncFieldTagIssue, 'Sinkron Tag'),
+    MapEntry(Issue.syncFieldTagDetail, 'Sinkron Tag Detail'),
+    MapEntry(Issue.syncFieldPenyebab, 'Sinkron Penyebab'),
+    MapEntry(Issue.syncFieldPenanganan, 'Sinkron Penanganan'),
+    MapEntry(Issue.syncFieldStatus, 'Sinkron Status'),
+    MapEntry(Issue.syncFieldEviden, 'Sinkron Eviden'),
   ];
 
   @override
@@ -384,7 +396,7 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
       if (widget.issue == null) {
         await widget.repository.insertIssue(issue);
       } else {
-        await widget.repository.updateIssue(issue);
+        await widget.repository.updateIssue(issue, syncFields: _syncFields);
       }
       
       Navigator.pop(context, true);
@@ -457,35 +469,37 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // Area Dropdown
                   const Text('AREA', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    decoration: BoxDecoration(
-                      color: AppTheme.secondaryNavy.withOpacity(0.5),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppTheme.borderNavy),
-                    ),
-                    child: DropdownButtonFormField<String>(
-                      decoration: const InputDecoration(border: InputBorder.none, filled: false),
-                      value: _selectedArea,
-                      items: _areas.map((a) {
-                        return DropdownMenuItem(value: a, child: Text(a));
-                      }).toList(),
-                      onChanged: (val) {
-                        if (val != null) {
-                          setState(() {
-                            _selectedArea = val;
-                            _selectedLegacyCode = null;
-                            if (_isDuplicateMode) {
-                              _currentKodeIssue = '';
-                              _issueController.clear();
-                              _penyebabController.clear();
-                            }
-                          });
-                        }
-                      },
+                  _buildSyncOutline(
+                    Issue.syncFieldArea,
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: AppTheme.secondaryNavy.withOpacity(0.5),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppTheme.borderNavy),
+                      ),
+                      child: DropdownButtonFormField<String>(
+                        decoration: const InputDecoration(border: InputBorder.none, filled: false),
+                        value: _selectedArea,
+                        items: _areas.map((a) {
+                          return DropdownMenuItem(value: a, child: Text(a));
+                        }).toList(),
+                        onChanged: (val) {
+                          if (val != null) {
+                            setState(() {
+                              _selectedArea = val;
+                              _selectedLegacyCode = null;
+                              if (_isDuplicateMode) {
+                                _currentKodeIssue = '';
+                                _issueController.clear();
+                                _penyebabController.clear();
+                              }
+                            });
+                          }
+                        },
+                      ),
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -499,24 +513,27 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
                           children: [
                             const Text('KATEGORI', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12, fontWeight: FontWeight.bold)),
                             const SizedBox(height: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
-                              decoration: BoxDecoration(
-                                color: AppTheme.secondaryNavy.withOpacity(0.5),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: AppTheme.borderNavy),
-                              ),
-                              child: DropdownButtonFormField<String>(
-                                decoration: const InputDecoration(border: InputBorder.none, filled: false),
-                                value: _selectedKategori,
-                                items: _kategoris.map((k) {
-                                  return DropdownMenuItem(value: k, child: Text(k));
-                                }).toList(),
-                                onChanged: (val) {
-                                  if (val != null) {
-                                    setState(() => _selectedKategori = val);
-                                  }
-                                },
+                            _buildSyncOutline(
+                              Issue.syncFieldKategori,
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.secondaryNavy.withOpacity(0.5),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: AppTheme.borderNavy),
+                                ),
+                                child: DropdownButtonFormField<String>(
+                                  decoration: const InputDecoration(border: InputBorder.none, filled: false),
+                                  value: _selectedKategori,
+                                  items: _kategoris.map((k) {
+                                    return DropdownMenuItem(value: k, child: Text(k));
+                                  }).toList(),
+                                  onChanged: (val) {
+                                    if (val != null) {
+                                      setState(() => _selectedKategori = val);
+                                    }
+                                  },
+                                ),
                               ),
                             ),
                           ],
@@ -529,24 +546,27 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
                           children: [
                             const Text('STATUS PERBAIKAN', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12, fontWeight: FontWeight.bold)),
                             const SizedBox(height: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
-                              decoration: BoxDecoration(
-                                color: AppTheme.secondaryNavy.withOpacity(0.5),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: AppTheme.borderNavy),
-                              ),
-                              child: DropdownButtonFormField<String>(
-                                decoration: const InputDecoration(border: InputBorder.none, filled: false),
-                                value: _selectedStatus,
-                                items: _statuses.map((s) {
-                                  return DropdownMenuItem(value: s, child: Text(s.toUpperCase()));
-                                }).toList(),
-                                onChanged: (val) {
-                                  if (val != null) {
-                                    setState(() => _selectedStatus = val);
-                                  }
-                                },
+                            _buildSyncOutline(
+                              Issue.syncFieldStatus,
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.secondaryNavy.withOpacity(0.5),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: AppTheme.borderNavy),
+                                ),
+                                child: DropdownButtonFormField<String>(
+                                  decoration: const InputDecoration(border: InputBorder.none, filled: false),
+                                  value: _selectedStatus,
+                                  items: _statuses.map((s) {
+                                    return DropdownMenuItem(value: s, child: Text(s.toUpperCase()));
+                                  }).toList(),
+                                  onChanged: (val) {
+                                    if (val != null) {
+                                      setState(() => _selectedStatus = val);
+                                    }
+                                  },
+                                ),
                               ),
                             ),
                           ],
@@ -770,44 +790,52 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 16),
+                    _buildSyncSettingsCard(),
                     const SizedBox(height: 24),
                   ],
 
                   // Issue text
                   const Text('ISSUE / KENDALA', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _issueController,
-                    maxLines: 3,
-                    readOnly: _isDuplicateMode,
-                    decoration: InputDecoration(
-                      hintText: _isDuplicateMode ? 'Pilih kendala terdahulu di atas' : 'Masukkan penjelasan issue secara lengkap',
-                      fillColor: _isDuplicateMode ? AppTheme.secondaryNavy.withOpacity(0.2) : null,
+                  _buildSyncOutline(
+                    Issue.syncFieldIssue,
+                    TextFormField(
+                      controller: _issueController,
+                      maxLines: 3,
+                      readOnly: _isDuplicateMode,
+                      decoration: InputDecoration(
+                        hintText: _isDuplicateMode ? 'Pilih kendala terdahulu di atas' : 'Masukkan penjelasan issue secara lengkap',
+                        fillColor: _isDuplicateMode ? AppTheme.secondaryNavy.withOpacity(0.2) : null,
+                      ),
+                      validator: (val) => val == null || val.trim().isEmpty ? 'Mohon isi kolom issue' : null,
                     ),
-                    validator: (val) => val == null || val.trim().isEmpty ? 'Mohon isi kolom issue' : null,
                   ),
                   const SizedBox(height: 8),
                   const Text('KLASIFIKASI TAG', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
-                  DropdownButtonFormField<String>(
-                    value: _selectedTagIssue,
-                    decoration: InputDecoration(
-                      hintText: 'Pilih tag manual atau Auto',
-                      helperText: 'Auto mengikuti isi issue, manual akan disimpan apa adanya',
+                  _buildSyncOutline(
+                    Issue.syncFieldTagIssue,
+                    DropdownButtonFormField<String>(
+                      value: _selectedTagIssue,
+                      decoration: InputDecoration(
+                        hintText: 'Pilih tag manual atau Auto',
+                        helperText: 'Auto mengikuti isi issue, manual akan disimpan apa adanya',
+                      ),
+                      dropdownColor: AppTheme.cardBg,
+                      items: _tagOptions.map((tag) {
+                        return DropdownMenuItem<String>(
+                          value: tag,
+                          child: Text(tag),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val == null) return;
+                        setState(() {
+                          _selectedTagIssue = val;
+                        });
+                      },
                     ),
-                    dropdownColor: AppTheme.cardBg,
-                    items: _tagOptions.map((tag) {
-                      return DropdownMenuItem<String>(
-                        value: tag,
-                        child: Text(tag),
-                      );
-                    }).toList(),
-                    onChanged: (val) {
-                      if (val == null) return;
-                      setState(() {
-                        _selectedTagIssue = val;
-                      });
-                    },
                   ),
                   const SizedBox(height: 20),
                   const Text('TAG DETAIL', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12, fontWeight: FontWeight.bold)),
@@ -869,10 +897,13 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
                     ),
                     const SizedBox(height: 8),
                   ],
-                  TextFormField(
-                    controller: _tagDetailController,
-                    decoration: const InputDecoration(
-                      hintText: 'Masukkan detail tag issue',
+                  _buildSyncOutline(
+                    Issue.syncFieldTagDetail,
+                    TextFormField(
+                      controller: _tagDetailController,
+                      decoration: const InputDecoration(
+                        hintText: 'Masukkan detail tag issue',
+                      ),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -913,40 +944,46 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
                   // Penanganan Vendor (Editable + Recommendations)
                   const Text('PENANGANAN VENDOR', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _penangananController,
-                    decoration: InputDecoration(
-                      hintText: 'Nama vendor / penanganan',
-                      suffixIcon: PopupMenuButton<String>(
-                        icon: const Icon(Icons.arrow_drop_down, color: AppTheme.accentYellow),
-                        onSelected: (val) {
-                          _penangananController.text = val;
-                        },
-                        itemBuilder: (context) {
-                          return _penangananRecommendations.map((r) {
-                            return PopupMenuItem(value: r, child: Text(r));
-                          }).toList();
-                        },
+                  _buildSyncOutline(
+                    Issue.syncFieldPenanganan,
+                    TextFormField(
+                      controller: _penangananController,
+                      decoration: InputDecoration(
+                        hintText: 'Nama vendor / penanganan',
+                        suffixIcon: PopupMenuButton<String>(
+                          icon: const Icon(Icons.arrow_drop_down, color: AppTheme.accentYellow),
+                          onSelected: (val) {
+                            _penangananController.text = val;
+                          },
+                          itemBuilder: (context) {
+                            return _penangananRecommendations.map((r) {
+                              return PopupMenuItem(value: r, child: Text(r));
+                            }).toList();
+                          },
+                        ),
                       ),
+                      validator: (val) => val == null || val.trim().isEmpty ? 'Mohon isi penanganan vendor' : null,
                     ),
-                    validator: (val) => val == null || val.trim().isEmpty ? 'Mohon isi penanganan vendor' : null,
                   ),
                   const SizedBox(height: 20),
 
                   // Causes
                   const Text('PENYEBAB', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _penyebabController,
-                    maxLines: 2,
-                    decoration: const InputDecoration(hintText: 'Penyebab terjadinya kendala'),
+                  _buildSyncOutline(
+                    Issue.syncFieldPenyebab,
+                    TextFormField(
+                      controller: _penyebabController,
+                      maxLines: 2,
+                      decoration: const InputDecoration(hintText: 'Penyebab terjadinya kendala'),
+                    ),
                   ),
                   const SizedBox(height: 20),
 
                   // Photo/Video Evidence Capture picker
                   const Text('EVIDEN FOTO / VIDEO', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
-                  _buildEvidenceDisplay(),
+                  _buildSyncOutline(Issue.syncFieldEviden, _buildEvidenceDisplay()),
                   const SizedBox(height: 40),
 
                   SizedBox(
@@ -1385,6 +1422,136 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildSyncSettingsCard() {
+    if (widget.issue == null || _currentKodeIssue.trim().isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppTheme.secondaryNavy.withOpacity(0.35),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: _syncFields.isEmpty ? AppTheme.borderNavy : AppTheme.accentYellow,
+          width: _syncFields.isEmpty ? 1 : 1.6,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                _syncFields.isEmpty ? Icons.sync_disabled : Icons.sync,
+                color: _syncFields.isEmpty ? AppTheme.textSecondary : AppTheme.accentYellow,
+                size: 18,
+              ),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'SINKRONISASI DATA KODE ISSUE SAMA',
+                  style: TextStyle(
+                    color: AppTheme.textPrimary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.4,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Centang field yang ingin disamakan untuk semua data dengan kode $_currentKodeIssue. Tanggal tidak ikut sinkron.',
+            style: const TextStyle(
+              color: AppTheme.textSecondary,
+              fontSize: 11,
+            ),
+          ),
+          const SizedBox(height: 12),
+          ..._syncableFields.map((entry) {
+            final checked = _syncFields.contains(entry.key);
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              decoration: BoxDecoration(
+                color: checked ? AppTheme.accentYellow.withOpacity(0.10) : Colors.transparent,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: checked ? AppTheme.accentYellow : AppTheme.borderNavy.withOpacity(0.7),
+                ),
+              ),
+              child: CheckboxListTile(
+                value: checked,
+                activeColor: AppTheme.accentYellow,
+                checkColor: AppTheme.primaryNavy,
+                controlAffinity: ListTileControlAffinity.leading,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                title: Text(
+                  entry.value,
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+                subtitle: const Text(
+                  'Field ini akan ikut diperbarui ke riwayat dengan kode issue sama.',
+                  style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+                ),
+                onChanged: (value) {
+                  setState(() {
+                    if (value == true) {
+                      _syncFields.add(entry.key);
+                    } else {
+                      _syncFields.remove(entry.key);
+                    }
+                  });
+                },
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSyncOutline(String fieldKey, Widget child) {
+    final isSynced = widget.issue != null && _syncFields.contains(fieldKey);
+    if (!isSynced) return child;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppTheme.accentYellow, width: 1.6),
+        color: AppTheme.accentYellow.withOpacity(0.06),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: AppTheme.accentYellow.withOpacity(0.18),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: AppTheme.accentYellow),
+            ),
+            child: const Text(
+              'FIELD INI AKAN DISINKRONKAN',
+              style: TextStyle(
+                color: AppTheme.accentYellow,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.4,
+              ),
+            ),
+          ),
+          child,
+        ],
       ),
     );
   }

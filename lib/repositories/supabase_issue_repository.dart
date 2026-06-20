@@ -131,7 +131,7 @@ class SupabaseIssueRepository implements IssueRepository {
   }
 
   @override
-  Future<void> updateIssue(Issue issue) async {
+  Future<void> updateIssue(Issue issue, {Set<String> syncFields = const {}}) async {
     _invalidateCache();
 
     // 1. Upload evidence photo if it is local
@@ -142,6 +142,18 @@ class SupabaseIssueRepository implements IssueRepository {
 
     final dataToUpdate = issue.copyWith(evide: onlineUrl).toMap();
     await _client.from('issues').update(dataToUpdate).eq('id', issue.id!);
+
+    if (syncFields.isNotEmpty && issue.kodeIssue.trim().isNotEmpty) {
+      final syncIssue = issue.copyWith(evide: onlineUrl);
+      final syncData = syncIssue.buildSyncUpdateMap(syncFields);
+      if (syncData.isNotEmpty) {
+        await _client
+            .from('issues')
+            .update(syncData)
+            .eq('kode_issue', issue.kodeIssue)
+            .neq('id', issue.id!);
+      }
+    }
 
     await recalculateDurations();
   }
