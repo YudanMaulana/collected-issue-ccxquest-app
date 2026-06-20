@@ -99,6 +99,11 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
     MapEntry(Issue.syncFieldEviden, 'Sinkron Eviden'),
   ];
 
+  String get _syncSummaryLabel {
+    if (_syncFields.isEmpty) return 'Sinkron Off';
+    return 'Sinkron ${_syncFields.length}';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -790,8 +795,6 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
-                    _buildSyncSettingsCard(),
                     const SizedBox(height: 24),
                   ],
 
@@ -997,6 +1000,7 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
               ),
             ),
           ),
+          floatingActionButton: isEdit ? _buildSyncFab() : null,
         ),
         if (_isSaving)
           Container(
@@ -1426,95 +1430,134 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
     );
   }
 
-  Widget _buildSyncSettingsCard() {
-    if (widget.issue == null || _currentKodeIssue.trim().isEmpty) {
-      return const SizedBox.shrink();
-    }
+  Widget _buildSyncFab() {
+    return FloatingActionButton.extended(
+      heroTag: 'syncFab',
+      backgroundColor: _syncFields.isEmpty ? AppTheme.secondaryNavy : AppTheme.accentYellow,
+      foregroundColor: _syncFields.isEmpty ? AppTheme.textPrimary : AppTheme.primaryNavy,
+      onPressed: _showSyncOptionsPopup,
+      icon: Icon(_syncFields.isEmpty ? Icons.sync_disabled : Icons.sync),
+      label: Text(_syncSummaryLabel),
+    );
+  }
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppTheme.secondaryNavy.withOpacity(0.35),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: _syncFields.isEmpty ? AppTheme.borderNavy : AppTheme.accentYellow,
-          width: _syncFields.isEmpty ? 1 : 1.6,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                _syncFields.isEmpty ? Icons.sync_disabled : Icons.sync,
-                color: _syncFields.isEmpty ? AppTheme.textSecondary : AppTheme.accentYellow,
-                size: 18,
+  Future<void> _showSyncOptionsPopup() async {
+    if (widget.issue == null || _currentKodeIssue.trim().isEmpty) return;
+
+    final tempSelection = Set<String>.from(_syncFields);
+
+    final result = await showDialog<Set<String>>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return AlertDialog(
+              backgroundColor: AppTheme.cardBg,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+              contentPadding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+              actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              title: Row(
+                children: [
+                  const Icon(Icons.sync, color: AppTheme.accentYellow, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Sinkronisasi $_currentKodeIssue',
+                      style: const TextStyle(
+                        color: AppTheme.textPrimary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
-              const Expanded(
-                child: Text(
-                  'SINKRONISASI DATA KODE ISSUE SAMA',
-                  style: TextStyle(
-                    color: AppTheme.textPrimary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.4,
+              content: SizedBox(
+                width: 420,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Pilih field yang ingin disamakan ke semua data dengan kode issue yang sama. Tanggal tidak ikut sinkron.',
+                        style: TextStyle(
+                          color: AppTheme.textSecondary,
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      ..._syncableFields.map((entry) {
+                        final checked = tempSelection.contains(entry.key);
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          decoration: BoxDecoration(
+                            color: checked ? AppTheme.accentYellow.withOpacity(0.10) : Colors.transparent,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: checked ? AppTheme.accentYellow : AppTheme.borderNavy.withOpacity(0.7),
+                            ),
+                          ),
+                          child: CheckboxListTile(
+                            value: checked,
+                            activeColor: AppTheme.accentYellow,
+                            checkColor: AppTheme.primaryNavy,
+                            controlAffinity: ListTileControlAffinity.leading,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                            title: Text(
+                              entry.value,
+                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                            ),
+                            subtitle: const Text(
+                              'Field ini akan ikut diperbarui ke riwayat dengan kode issue sama.',
+                              style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+                            ),
+                            onChanged: (value) {
+                              setModalState(() {
+                                if (value == true) {
+                                  tempSelection.add(entry.key);
+                                } else {
+                                  tempSelection.remove(entry.key);
+                                }
+                              });
+                            },
+                          ),
+                        );
+                      }),
+                    ],
                   ),
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Centang field yang ingin disamakan untuk semua data dengan kode $_currentKodeIssue. Tanggal tidak ikut sinkron.',
-            style: const TextStyle(
-              color: AppTheme.textSecondary,
-              fontSize: 11,
-            ),
-          ),
-          const SizedBox(height: 12),
-          ..._syncableFields.map((entry) {
-            final checked = _syncFields.contains(entry.key);
-            return Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              decoration: BoxDecoration(
-                color: checked ? AppTheme.accentYellow.withOpacity(0.10) : Colors.transparent,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: checked ? AppTheme.accentYellow : AppTheme.borderNavy.withOpacity(0.7),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text(
+                    'Batal',
+                    style: TextStyle(color: AppTheme.textSecondary),
+                  ),
                 ),
-              ),
-              child: CheckboxListTile(
-                value: checked,
-                activeColor: AppTheme.accentYellow,
-                checkColor: AppTheme.primaryNavy,
-                controlAffinity: ListTileControlAffinity.leading,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-                title: Text(
-                  entry.value,
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(dialogContext, tempSelection),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.accentYellow,
+                    foregroundColor: AppTheme.primaryNavy,
+                  ),
+                  child: const Text('Apply'),
                 ),
-                subtitle: const Text(
-                  'Field ini akan ikut diperbarui ke riwayat dengan kode issue sama.',
-                  style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
-                ),
-                onChanged: (value) {
-                  setState(() {
-                    if (value == true) {
-                      _syncFields.add(entry.key);
-                    } else {
-                      _syncFields.remove(entry.key);
-                    }
-                  });
-                },
-              ),
+              ],
             );
-          }),
-        ],
-      ),
+          },
+        );
+      },
     );
+
+    if (!mounted || result == null) return;
+    setState(() {
+      _syncFields
+        ..clear()
+        ..addAll(result);
+    });
   }
 
   Widget _buildSyncOutline(String fieldKey, Widget child) {
