@@ -116,9 +116,11 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
     return rawUrl;
   }
 
+  static const String _ngrokBypassValue = '69420';
+
   Map<String, String>? _networkImageHeaders(String url) {
     if (url.contains('ngrok')) {
-      return const <String, String>{'ngrok-skip-browser-warning': 'true'};
+      return const <String, String>{'ngrok-skip-browser-warning': _ngrokBypassValue};
     }
     return null;
   }
@@ -1223,7 +1225,7 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
                                           url, 
                                           mode: LaunchMode.inAppWebView,
                                           webViewConfiguration: const WebViewConfiguration(
-                                            headers: <String, String>{'ngrok-skip-browser-warning': 'true'},
+                                            headers: <String, String>{'ngrok-skip-browser-warning': _ngrokBypassValue},
                                           ),
                                         );
                                       } else {

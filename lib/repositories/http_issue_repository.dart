@@ -8,7 +8,7 @@ import 'local_issue_repository.dart';
 /// A robust REST HTTP implementation of the IssueRepository interface.
 /// Connects to the standalone Express & SQLite backend server.
 /// Features a memory-cache layer, transparent multipart file upload, and verbose debug logging.
-/// Includes the 'ngrok-skip-browser-warning': 'true' header to bypass Ngrok's interstitial warning pages.
+/// Includes the 'ngrok-skip-browser-warning': '69420' header to bypass Ngrok's interstitial warning pages.
 /// Integrated with a local SQLite persistent cache fallback to ensure 100% offline-first reliability.
 class HttpIssueRepository implements IssueRepository {
   // Base URL of the standalone backend server
@@ -29,7 +29,7 @@ class HttpIssueRepository implements IssueRepository {
   Map<String, String> _getHeaders({bool isJson = false}) {
     return {
       if (isJson) 'Content-Type': 'application/json',
-      'ngrok-skip-browser-warning': 'true', // MEM-BYPASS INTERSTITIAL WARNING NGROK FREE
+      'ngrok-skip-browser-warning': '69420', // MEM-BYPASS INTERSTITIAL WARNING NGROK FREE
     };
   }
 
