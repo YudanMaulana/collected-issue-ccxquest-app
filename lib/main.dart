@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'core/theme.dart';
 import 'repositories/issue_repository.dart';
 import 'screens/pin_screen.dart';
@@ -16,7 +18,7 @@ void main() async {
   // Alamat URL Wifi lokal laptop Anda (Port 5001)
   // ==========================================
   final IssueRepository repository = HttpIssueRepository(
-    baseUrl: 'https://cody-chronographic-tobi.ngrok-free.dev/api',
+    baseUrl: 'https://server.choclatosxquest.web.id/api',
   );
 
   runApp(MyApp(repository: repository));
@@ -48,6 +50,8 @@ class MainAuthGateway extends StatefulWidget {
 class _MainAuthGatewayState extends State<MainAuthGateway> {
   bool _unlocked = false;
   int _currentIndex = 0;
+  bool? _apiConnected;
+  Timer? _apiCheckTimer;
 
   late List<Widget> _screens;
 
@@ -59,6 +63,42 @@ class _MainAuthGatewayState extends State<MainAuthGateway> {
       IssueListScreen(repository: widget.repository),
       IncompleteIssuesScreen(repository: widget.repository),
     ];
+    _checkApiConnection();
+    _apiCheckTimer = Timer.periodic(const Duration(seconds: 15), (timer) {
+      _checkApiConnection();
+    });
+  }
+
+  @override
+  void dispose() {
+    _apiCheckTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _checkApiConnection() async {
+    try {
+      String? url;
+      if (widget.repository is HttpIssueRepository) {
+        url = (widget.repository as HttpIssueRepository).baseUrl;
+      }
+      if (url != null) {
+        final uri = Uri.parse('$url/health');
+        final response = await http.get(uri).timeout(const Duration(seconds: 4));
+        if (response.statusCode == 200) {
+          if (mounted && _apiConnected != true) {
+            setState(() {
+              _apiConnected = true;
+            });
+          }
+          return;
+        }
+      }
+    } catch (_) {}
+    if (mounted && _apiConnected != false) {
+      setState(() {
+        _apiConnected = false;
+      });
+    }
   }
 
   @override
@@ -84,6 +124,67 @@ class _MainAuthGatewayState extends State<MainAuthGateway> {
                   : 'INCOMPLETE DATA',
         ),
         actions: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+            child: Center(
+              child: Tooltip(
+                message: _apiConnected == null
+                    ? 'Checking API connection...'
+                    : _apiConnected == true
+                        ? 'API Connected'
+                        : 'API Disconnected',
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: _apiConnected == null
+                            ? Colors.grey
+                            : _apiConnected == true
+                                ? Colors.greenAccent.shade400
+                                : Colors.redAccent,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          if (_apiConnected == true)
+                            BoxShadow(
+                              color: Colors.greenAccent.shade400.withOpacity(0.5),
+                              blurRadius: 6,
+                              spreadRadius: 2,
+                            ),
+                          if (_apiConnected == false)
+                            BoxShadow(
+                              color: Colors.redAccent.withOpacity(0.5),
+                              blurRadius: 6,
+                              spreadRadius: 2,
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      _apiConnected == null
+                          ? 'Checking...'
+                          : _apiConnected == true
+                              ? 'ONLINE'
+                              : 'OFFLINE',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: _apiConnected == null
+                            ? Colors.grey
+                            : _apiConnected == true
+                                ? Colors.greenAccent.shade400
+                                : Colors.redAccent,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
           IconButton(
             icon: const Icon(Icons.lock_open, color: AppTheme.accentYellow),
             onPressed: () {

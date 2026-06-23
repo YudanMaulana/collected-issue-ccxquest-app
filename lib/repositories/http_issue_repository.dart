@@ -15,7 +15,7 @@ class HttpIssueRepository implements IssueRepository {
   final String baseUrl;
   final LocalIssueRepository _localCache = LocalIssueRepository();
 
-  HttpIssueRepository({this.baseUrl = 'http://77.78.88.3:5001/api'}) {
+  HttpIssueRepository({this.baseUrl = 'https://server.choclatosxquest.web.id/api'}) {
     print('[HttpIssueRepository] Inisialisasi dengan Base URL: $baseUrl');
   }
 

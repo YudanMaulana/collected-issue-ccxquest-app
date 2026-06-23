@@ -1,5 +1,7 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
@@ -39,6 +41,7 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
   final _penyebabController = TextEditingController();
   final _penangananController = TextEditingController();
   final _tagDetailController = TextEditingController();
+  final Map<String, Future<Uint8List?>> _networkImageFutureCache = {};
   
   String? _evidencePath;
   bool _isSaving = false;
@@ -123,6 +126,28 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
       return const <String, String>{'ngrok-skip-browser-warning': _ngrokBypassValue};
     }
     return null;
+  }
+
+  Future<Uint8List?> _fetchNetworkImageBytes(String url) async {
+    try {
+      final response = await http.get(
+        Uri.parse(url),
+        headers: _networkImageHeaders(url),
+      );
+      if (response.statusCode >= 200 &&
+          response.statusCode < 300 &&
+          response.bodyBytes.isNotEmpty) {
+        return response.bodyBytes;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  Future<Uint8List?> _getNetworkImageFuture(String url) {
+    return _networkImageFutureCache.putIfAbsent(
+      url,
+      () => _fetchNetworkImageBytes(url),
+    );
   }
 
   @override
@@ -1290,56 +1315,7 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
                                 ],
                               ),
                             )
-                          : Image.network(
-                              resolvedUrl,
-                              height: 200,
-                              width: double.infinity,
-                              fit: BoxFit.cover,
-                              headers: _networkImageHeaders(resolvedUrl),
-                              loadingBuilder: (context, child, progress) {
-                                if (progress == null) return child;
-                                return Container(
-                                  height: 200,
-                                  color: AppTheme.primaryNavy,
-                                  child: const Center(
-                                    child: CircularProgressIndicator(
-                                      color: AppTheme.accentYellow,
-                                    ),
-                                  ),
-                                );
-                              },
-                              errorBuilder: (context, error, stackTrace) => Container(
-                                height: 200,
-                                color: AppTheme.primaryNavy,
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    const Icon(Icons.broken_image, color: Colors.redAccent, size: 50),
-                                    const SizedBox(height: 8),
-                                    const Text(
-                                      'Preview gambar gagal dimuat',
-                                      style: TextStyle(
-                                        color: AppTheme.textPrimary,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    TextButton(
-                                      onPressed: () async {
-                                        try {
-                                          final url = Uri.parse(resolvedUrl);
-                                          if (await canLaunchUrl(url)) {
-                                            await launchUrl(url, mode: LaunchMode.externalApplication);
-                                          }
-                                        } catch (_) {}
-                                      },
-                                      child: const Text('Buka file'),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            )))
+                          : _buildRemoteImagePreview(resolvedUrl)))
                   : (isVideo && isLocalFileExists
                       ? Container(
                           height: 200,
@@ -1555,6 +1531,74 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildRemoteImagePreview(String imageUrl) {
+    return FutureBuilder<Uint8List?>(
+      future: _getNetworkImageFuture(imageUrl),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return Container(
+            height: 200,
+            color: AppTheme.primaryNavy,
+            child: const Center(
+              child: CircularProgressIndicator(
+                color: AppTheme.accentYellow,
+              ),
+            ),
+          );
+        }
+
+        final bytes = snapshot.data;
+        if (bytes != null && bytes.isNotEmpty) {
+          return Image.memory(
+            bytes,
+            height: 200,
+            width: double.infinity,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) {
+              return _buildRemoteImageError(imageUrl);
+            },
+          );
+        }
+
+        return _buildRemoteImageError(imageUrl);
+      },
+    );
+  }
+
+  Widget _buildRemoteImageError(String imageUrl) {
+    return Container(
+      height: 200,
+      color: AppTheme.primaryNavy,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.broken_image, color: Colors.redAccent, size: 50),
+          const SizedBox(height: 8),
+          const Text(
+            'Preview gambar gagal dimuat',
+            style: TextStyle(
+              color: AppTheme.textPrimary,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 6),
+          TextButton(
+            onPressed: () async {
+              try {
+                final url = Uri.parse(imageUrl);
+                if (await canLaunchUrl(url)) {
+                  await launchUrl(url, mode: LaunchMode.externalApplication);
+                }
+              } catch (_) {}
+            },
+            child: const Text('Buka file'),
+          ),
+        ],
       ),
     );
   }
