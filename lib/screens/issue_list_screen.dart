@@ -59,7 +59,7 @@ class _IssueListScreenState extends State<IssueListScreen> {
   ];
 
   final List<String> _kategoris = ['All', 'SISTEM', 'ASSET'];
-  final List<String> _statuses = ['All', 'pending', 'solved'];
+  final List<String> _statuses = ['All', 'pending', 'monitoring', 'solved'];
 
   @override
   void initState() {
@@ -1139,7 +1139,19 @@ class _IssueListScreenState extends State<IssueListScreen> {
   }
 
   Widget _buildIssueItemCard(Issue issue) {
-    final bool isSolved = issue.status == 'solved';
+    final String statusLower = issue.status.trim().toLowerCase();
+    final bool isSolved = statusLower == 'solved';
+    final bool isMonitoring = statusLower == 'monitoring';
+    final Color statusColor = isSolved
+        ? AppTheme.statusSolved
+        : isMonitoring
+            ? AppTheme.statusMonitoring
+            : AppTheme.statusPending;
+    final IconData statusIcon = isSolved
+        ? Icons.check
+        : isMonitoring
+            ? Icons.remove_red_eye_outlined
+            : Icons.access_time;
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
@@ -1386,10 +1398,10 @@ class _IssueListScreenState extends State<IssueListScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: isSolved ? AppTheme.statusSolved.withOpacity(0.1) : AppTheme.statusPending.withOpacity(0.1),
+                      color: statusColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: isSolved ? AppTheme.statusSolved : AppTheme.statusPending,
+                        color: statusColor,
                         width: 1,
                       ),
                     ),
@@ -1397,15 +1409,15 @@ class _IssueListScreenState extends State<IssueListScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
-                          isSolved ? Icons.check : Icons.access_time,
+                          statusIcon,
                           size: 11,
-                          color: isSolved ? AppTheme.statusSolved : AppTheme.statusPending,
+                          color: statusColor,
                         ),
                         const SizedBox(width: 4),
                         Text(
                           issue.status.toUpperCase(),
                           style: TextStyle(
-                            color: isSolved ? AppTheme.statusSolved : AppTheme.statusPending,
+                            color: statusColor,
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
                           ),

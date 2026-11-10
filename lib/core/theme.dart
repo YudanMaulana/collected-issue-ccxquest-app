@@ -15,6 +15,7 @@ class AppTheme {
   static const Color textSecondary = Color(0xFF94A3B8);
   static const Color statusSolved = Color(0xFF10B981); // Emerald green for solved
   static const Color statusPending = Color(0xFFF59E0B); // Amber for pending
+  static const Color statusMonitoring = Color(0xFF3B82F6); // Blue for monitoring
 
   static ThemeData get darkTheme {
     return ThemeData(

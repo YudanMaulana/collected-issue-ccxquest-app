@@ -78,7 +78,7 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
   ];
 
   final List<String> _kategoris = ['SISTEM', 'ASSET'];
-  final List<String> _statuses = ['pending', 'solved'];
+  final List<String> _statuses = ['pending', 'monitoring', 'solved'];
   final List<String> _tagOptions = [
     'Auto',
     'Koneksi Jaringan',
@@ -1090,6 +1090,40 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
                       ),
                       validator: (val) => val == null || val.trim().isEmpty ? 'Mohon isi penanganan vendor' : null,
                     ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    children: _penangananRecommendations.map((vendor) {
+                      final isSelected = _penangananController.text.trim().toUpperCase() == vendor;
+                      return InkWell(
+                        onTap: () {
+                          setState(() {
+                            _penangananController.text = vendor;
+                          });
+                        },
+                        borderRadius: BorderRadius.circular(20),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: isSelected ? AppTheme.accentYellow.withOpacity(0.2) : AppTheme.secondaryNavy,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: isSelected ? AppTheme.accentYellow : AppTheme.borderNavy,
+                            ),
+                          ),
+                          child: Text(
+                            vendor,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                              color: isSelected ? AppTheme.accentYellow : AppTheme.textSecondary,
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
                   ),
                   const SizedBox(height: 20),
 
