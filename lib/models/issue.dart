@@ -192,6 +192,11 @@ class Issue {
     }
     if (penyebab.trim().isEmpty) missing.add('Penyebab');
     if (penanganan.trim().isEmpty) missing.add('Penanganan');
+    // Periode 2 (Mulai 10 Nov 2026): Wajib Priority
+    final dateStr = '${tgl.year.toString().padLeft(4, '0')}-${tgl.month.toString().padLeft(2, '0')}-${tgl.day.toString().padLeft(2, '0')}';
+    if (dateStr.compareTo('2026-11-10') >= 0 && priority.trim().isEmpty) {
+      missing.add('Priority');
+    }
     return missing;
   }
 

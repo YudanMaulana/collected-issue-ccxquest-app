@@ -434,9 +434,11 @@ class _IncompleteIssuesScreenState extends State<IncompleteIssuesScreen> {
                                         ),
                                         const SizedBox(height: 12),
                                         Text(
-                                          'Priority: ${issue.priority.isEmpty ? 'Belum Diisi' : issue.priority}',
+                                          'Priority: ${issue.priority.isEmpty ? (issue.tgl.isAfter(DateTime(2026, 11, 9, 23, 59, 59)) ? 'Belum Diisi (Wajib P2)' : 'Tidak Wajib (Periode 1)') : issue.priority}',
                                           style: TextStyle(
-                                            color: issue.priority.isEmpty ? Colors.redAccent : AppTheme.accentYellow,
+                                            color: issue.priority.isEmpty
+                                                ? (issue.tgl.isAfter(DateTime(2026, 11, 9, 23, 59, 59)) ? Colors.redAccent : AppTheme.textSecondary)
+                                                : AppTheme.accentYellow,
                                             fontSize: 11,
                                             fontWeight: FontWeight.bold,
                                           ),
