@@ -230,6 +230,7 @@ class HttpIssueRepository implements IssueRepository {
         request.fields['perulangan_masalah'] = finalIssue.perulanganMasalah.toString();
         request.fields['lama_perbaikan'] = finalIssue.perulanganMasalah.toString();
         request.fields['penyebab'] = finalIssue.penyebab;
+        request.fields['priority'] = finalIssue.priority;
         request.fields['month'] = _getMonthString(finalIssue.tgl);
 
         final ext = localPath!.split('.').last.toLowerCase();
@@ -636,6 +637,7 @@ class HttpIssueRepository implements IssueRepository {
           'area': item.area,
           'evide': item.evide ?? '',
           'tag_detail': item.tagDetail,
+          'priority': item.priority,
         };
       }
     }

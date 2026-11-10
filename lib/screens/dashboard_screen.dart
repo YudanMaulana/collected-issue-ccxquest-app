@@ -109,7 +109,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            'Ditemukan $_incompleteCount data yang belum diisi Tag Detail, Eviden, Penyebab, atau Penanganan.',
+                            'Ditemukan $_incompleteCount data yang belum diisi Priority, Tag Detail, Eviden, Penyebab, atau Penanganan.',
                             style: const TextStyle(
                               color: AppTheme.textSecondary,
                               fontSize: 12,

@@ -24,6 +24,16 @@ class _IssueListScreenState extends State<IssueListScreen> {
   String _selectedArea = 'All';
   String _selectedKategori = 'All';
   String _selectedStatus = 'All';
+  String _selectedPriority = 'All';
+  final List<String> _priorities = ['All', 'P0', 'P1', 'P2', 'P3', 'UNSET'];
+  final Map<String, String> _priorityFilterLabels = {
+    'All': 'Semua Priority',
+    'P0': 'P0 — Critical',
+    'P1': 'P1 — High',
+    'P2': 'P2 — Medium',
+    'P3': 'P3 — Common',
+    'UNSET': 'Belum Diisi',
+  };
   bool _incompleteOnly = false;
   DateTime? _selectedFilterDate;
   String _selectedKodeIssue = 'All';
@@ -86,6 +96,14 @@ class _IssueListScreenState extends State<IssueListScreen> {
 
     if (_selectedKodeIssue != 'All') {
       data = data.where((issue) => issue.kodeIssue.trim().toUpperCase() == _selectedKodeIssue.toUpperCase()).toList();
+    }
+
+    if (_selectedPriority != 'All') {
+      if (_selectedPriority == 'UNSET') {
+        data = data.where((issue) => issue.priority.trim().isEmpty).toList();
+      } else {
+        data = data.where((issue) => issue.priority.trim().toUpperCase() == _selectedPriority.toUpperCase()).toList();
+      }
     }
 
     // Compute dates with issues based on current filters (before date filter is applied)
@@ -561,6 +579,7 @@ class _IssueListScreenState extends State<IssueListScreen> {
                               _selectedArea = 'All';
                               _selectedKategori = 'All';
                               _selectedStatus = 'All';
+                              _selectedPriority = 'All';
                               _incompleteOnly = false;
                               _selectedKodeIssue = 'All';
                             });
@@ -694,7 +713,7 @@ class _IssueListScreenState extends State<IssueListScreen> {
                         style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
                       ),
                       subtitle: const Text(
-                        'Tampilkan issue tanpa tag detail, eviden, penyebab, atau penanganan',
+                        'Tampilkan issue tanpa priority, tag detail, eviden, penyebab, atau penanganan',
                         style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
                       ),
                       value: _incompleteOnly,
@@ -1311,6 +1330,57 @@ class _IssueListScreenState extends State<IssueListScreen> {
                     ),
                   ),
                   const SizedBox(width: 8),
+
+                  // Priority Badge
+                  if (issue.priority.isNotEmpty) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: issue.priority == 'P0' ? Colors.redAccent.withOpacity(0.15) :
+                               issue.priority == 'P1' ? Colors.orangeAccent.withOpacity(0.15) :
+                               issue.priority == 'P2' ? Colors.amber.withOpacity(0.15) : Colors.blueAccent.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: issue.priority == 'P0' ? Colors.redAccent :
+                                 issue.priority == 'P1' ? Colors.orangeAccent :
+                                 issue.priority == 'P2' ? Colors.amber : Colors.blueAccent,
+                          width: 1,
+                        ),
+                      ),
+                      child: Text(
+                        issue.priority == 'P0' ? 'P0 — Critical' :
+                        issue.priority == 'P1' ? 'P1 — High' :
+                        issue.priority == 'P2' ? 'P2 — Medium' :
+                        issue.priority == 'P3' ? 'P3 — Common' : issue.priority,
+                        style: TextStyle(
+                          color: issue.priority == 'P0' ? Colors.redAccent :
+                                 issue.priority == 'P1' ? Colors.orangeAccent :
+                                 issue.priority == 'P2' ? Colors.amber : Colors.lightBlueAccent,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                  ] else ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.redAccent.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.redAccent.withOpacity(0.3), width: 1),
+                      ),
+                      child: const Text(
+                        'Belum Ada Priority',
+                        style: TextStyle(
+                          color: Colors.redAccent,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                  ],
 
                   // Status Badge
                   Container(

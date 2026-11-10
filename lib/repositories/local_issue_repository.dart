@@ -19,7 +19,7 @@ class LocalIssueRepository implements IssueRepository {
 
     return await openDatabase(
       pathString,
-      version: 4,
+      version: 5,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE issues (
@@ -35,7 +35,8 @@ class LocalIssueRepository implements IssueRepository {
             evide TEXT,
             tag_issue TEXT,
             kode_issue TEXT,
-            tag_detail TEXT
+            tag_detail TEXT,
+            priority TEXT
           )
         ''');
       },
@@ -54,6 +55,11 @@ class LocalIssueRepository implements IssueRepository {
         if (oldVersion < 4) {
           try {
             await db.execute('ALTER TABLE issues ADD COLUMN tag_detail TEXT');
+          } catch (_) {}
+        }
+        if (oldVersion < 5) {
+          try {
+            await db.execute('ALTER TABLE issues ADD COLUMN priority TEXT');
           } catch (_) {}
         }
       },
@@ -265,7 +271,7 @@ class LocalIssueRepository implements IssueRepository {
   Future<List<Map<String, String>>> getUniqueIssues() async {
     final db = await database;
     final List<Map<String, dynamic>> result = await db.rawQuery('''
-      SELECT kode_issue, issue, kategori, penyebab, area, evide, tag_detail
+      SELECT kode_issue, issue, kategori, penyebab, area, evide, tag_detail, priority
       FROM issues 
       WHERE kode_issue IS NOT NULL AND kode_issue != ""
       GROUP BY kode_issue
@@ -279,6 +285,7 @@ class LocalIssueRepository implements IssueRepository {
       'area': (row['area'] ?? '') as String,
       'evide': (row['evide'] ?? '') as String,
       'tag_detail': (row['tag_detail'] ?? '') as String,
+      'priority': (row['priority'] ?? '') as String,
     }).toList();
   }
 

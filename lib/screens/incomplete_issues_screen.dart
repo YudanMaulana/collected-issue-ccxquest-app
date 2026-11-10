@@ -17,6 +17,7 @@ class _IncompleteIssuesScreenState extends State<IncompleteIssuesScreen> {
   bool _isLoading = true;
   List<Issue> _issues = [];
   final Map<String, bool> _draftFieldFilters = {
+    'Priority': false,
     'Tag Detail': false,
     'Eviden': false,
     'Penyebab': false,
@@ -158,6 +159,7 @@ class _IncompleteIssuesScreenState extends State<IncompleteIssuesScreen> {
     final visibleIssues = _filteredIssues;
 
     final filterFields = [
+      {'label': 'Priority', 'icon': Icons.flag_outlined, 'color': Colors.redAccent},
       {'label': 'Tag Detail', 'icon': Icons.sell_outlined, 'color': AppTheme.accentYellow},
       {'label': 'Eviden', 'icon': Icons.image_outlined, 'color': Colors.lightBlueAccent},
       {'label': 'Penyebab', 'icon': Icons.help_outline, 'color': Colors.orangeAccent},
@@ -431,6 +433,15 @@ class _IncompleteIssuesScreenState extends State<IncompleteIssuesScreen> {
                                           }).toList(),
                                         ),
                                         const SizedBox(height: 12),
+                                        Text(
+                                          'Priority: ${issue.priority.isEmpty ? 'Belum Diisi' : issue.priority}',
+                                          style: TextStyle(
+                                            color: issue.priority.isEmpty ? Colors.redAccent : AppTheme.accentYellow,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
                                         Text(
                                           'Tag Detail: ${issue.tagDetail.isEmpty ? '-' : issue.tagDetail}',
                                           style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11),

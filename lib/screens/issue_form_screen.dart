@@ -36,6 +36,15 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
   late String _selectedArea;
   late String _selectedKategori;
   late String _selectedStatus;
+  late String _selectedPriority;
+  final List<String> _priorities = ['', 'P0', 'P1', 'P2', 'P3'];
+  final Map<String, String> _priorityLabels = {
+    '': '-- Pilih Priority --',
+    'P0': 'P0 — Critical',
+    'P1': 'P1 — High',
+    'P2': 'P2 — Medium',
+    'P3': 'P3 — Common',
+  };
   
   final _issueController = TextEditingController();
   final _penyebabController = TextEditingController();
@@ -205,6 +214,7 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
 
     _issueController.text = sourceIssue?.issue ?? '';
     _penyebabController.text = sourceIssue?.penyebab ?? '';
+    _selectedPriority = sourceIssue?.priority ?? '';
     _penangananController.text = widget.issue?.penanganan ?? ''; // Exclude duplicateFrom.penanganan, start new empty!
     _tagDetailController.text = sourceIssue?.tagDetail ?? '';
     _evidencePath = widget.issue?.evide; // Only keep evidence for edits, not duplicates
@@ -441,6 +451,7 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
           : _selectedTagIssue,
       kodeIssue: _currentKodeIssue,
       tagDetail: _tagDetailController.text.trim(),
+      priority: _selectedPriority,
     );
 
     try {
@@ -624,6 +635,72 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
                         ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Priority Level
+                  const Text('PRIORITY LEVEL', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  _buildSyncOutline(
+                    Issue.syncFieldPriority,
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: AppTheme.secondaryNavy.withOpacity(0.5),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppTheme.borderNavy),
+                      ),
+                      child: DropdownButtonFormField<String>(
+                        decoration: const InputDecoration(border: InputBorder.none, filled: false),
+                        value: _priorities.contains(_selectedPriority) ? _selectedPriority : '',
+                        items: _priorities.map((p) {
+                          Color dotColor;
+                          if (p == 'P0') {
+                            dotColor = Colors.redAccent;
+                          } else if (p == 'P1') {
+                            dotColor = Colors.orangeAccent;
+                          } else if (p == 'P2') {
+                            dotColor = Colors.amber;
+                          } else {
+                            dotColor = Colors.blueAccent;
+                          }
+                          return DropdownMenuItem(
+                            value: p,
+                            child: Row(
+                              children: [
+                                if (p.isNotEmpty) ...[
+                                  Container(
+                                    width: 10,
+                                    height: 10,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: dotColor,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                ],
+                                Text(
+                                  _priorityLabels[p] ?? p,
+                                  style: TextStyle(
+                                    color: p == 'P0' ? Colors.redAccent :
+                                           p == 'P1' ? Colors.orangeAccent :
+                                           p == 'P2' ? Colors.amber :
+                                           p == 'P3' ? Colors.lightBlueAccent : AppTheme.textSecondary,
+                                    fontWeight: p.isNotEmpty ? FontWeight.bold : FontWeight.normal,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (val) {
+                          if (val != null) {
+                            setState(() => _selectedPriority = val);
+                          }
+                        },
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 20),
 

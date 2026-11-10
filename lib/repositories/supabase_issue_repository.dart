@@ -333,6 +333,7 @@ class SupabaseIssueRepository implements IssueRepository {
           'issue': item.issue,
           'kategori': item.kategori,
           'penyebab': item.penyebab,
+          'priority': item.priority,
         };
       }
     }

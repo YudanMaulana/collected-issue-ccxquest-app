@@ -11,6 +11,7 @@ class Issue {
   static const String syncFieldPenyebab = 'penyebab';
   static const String syncFieldStatus = 'status';
   static const String syncFieldEviden = 'evide';
+  static const String syncFieldPriority = 'priority';
 
   final int? id;
   final DateTime tgl;
@@ -25,6 +26,7 @@ class Issue {
   final String tagIssue; // Manual tag selection, or auto-calculated fallback
   final String kodeIssue; // Unique tracking code
   final String tagDetail; // Detail Tag Issue
+  final String priority;
 
   Issue({
     this.id,
@@ -40,9 +42,11 @@ class Issue {
     String? tagIssue,
     String? kodeIssue,
     String? tagDetail,
+    String? priority,
   }) : this.tagIssue = tagIssue ?? calculateTag(issue),
        this.kodeIssue = kodeIssue ?? '',
-       this.tagDetail = tagDetail ?? '';
+       this.tagDetail = tagDetail ?? '',
+       this.priority = priority ?? '';
 
   bool get isNoNeedEviden {
     final normalized = evide?.trim().toUpperCase().replaceAll(' ', '_');
@@ -160,6 +164,7 @@ class Issue {
     String? tagIssue,
     String? kodeIssue,
     String? tagDetail,
+    String? priority,
   }) {
     return Issue(
       id: id ?? this.id,
@@ -175,6 +180,7 @@ class Issue {
       tagIssue: tagIssue ?? this.tagIssue,
       kodeIssue: kodeIssue ?? this.kodeIssue,
       tagDetail: tagDetail ?? this.tagDetail,
+      priority: priority ?? this.priority,
     );
   }
 
@@ -214,6 +220,7 @@ class Issue {
     if (syncFields.contains(syncFieldPenyebab)) data['penyebab'] = penyebab;
     if (syncFields.contains(syncFieldStatus)) data['status'] = status;
     if (syncFields.contains(syncFieldEviden)) data['evide'] = evide;
+    if (syncFields.contains(syncFieldPriority)) data['priority'] = priority;
     return data;
   }
 
@@ -234,6 +241,7 @@ class Issue {
       'tag_issue': tagIssue,
       'kode_issue': kodeIssue,
       'tag_detail': tagDetail,
+      'priority': priority,
     };
   }
 
@@ -260,6 +268,7 @@ class Issue {
       tagIssue: (map['tag_issue'] ?? map['TAG ISSUE'] ?? map['TAG\u0020ISSUE']) as String?,
       kodeIssue: (map['kode_issue'] ?? map['KODE ISSUE'] ?? map['kode_kendala'] ?? '') as String,
       tagDetail: (map['tag_detail'] ?? map['TAG DETAIL'] ?? map['tag_detail_issue'] ?? map['detail_tag_issue'] ?? '') as String,
+      priority: (map['priority'] ?? map['PRIORITY'] ?? '') as String,
     );
   }
 }
