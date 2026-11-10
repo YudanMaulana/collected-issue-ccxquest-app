@@ -76,6 +76,8 @@ class ExcelHelper {
         // Clean status
         if (statusVal.contains('solve')) {
           statusVal = 'solved';
+        } else if (statusVal.contains('monitor')) {
+          statusVal = 'monitoring';
         } else {
           statusVal = 'pending';
         }
@@ -223,7 +225,8 @@ class ExcelHelper {
     // Compute metrics
     final total = issues.length;
     final solved = issues.where((e) => e.status.toLowerCase() == 'solved').length;
-    final pending = total - solved;
+    final monitoring = issues.where((e) => e.status.toLowerCase() == 'monitoring').length;
+    final pending = issues.where((e) => e.status.toLowerCase() != 'solved' && e.status.toLowerCase() != 'monitoring').length;
     final uniqueCodes = issues
         .map((e) => e.kodeIssue.trim().toUpperCase())
         .where((c) => c.isNotEmpty)
@@ -256,6 +259,7 @@ class ExcelHelper {
       ['Total Issues', total],
       ['Jumlah Kode Issue', uniqueIssuesCount],
       ['Solved Issues', solved],
+      ['Monitoring Issues', monitoring],
       ['Pending Issues', pending],
     ];
     for (int i = 0; i < overviewData.length; i++) {

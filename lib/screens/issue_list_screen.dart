@@ -287,13 +287,15 @@ class _IssueListScreenState extends State<IssueListScreen> {
       final String formattedDate = DateFormat('EEEE, dd MMMM yyyy').format(_selectedFilterDate!.toLocal());
       
       final totalIssues = _issues.length;
-      final solvedCount = _issues.where((e) => e.status.toLowerCase() == 'solved').length;
-      final pendingCount = _issues.where((e) => e.status.toLowerCase() == 'pending').length;
+      final solvedCount = _issues.where((e) => e.status.trim().toLowerCase() == 'solved').length;
+      final monitoringCount = _issues.where((e) => e.status.trim().toLowerCase() == 'monitoring').length;
+      final pendingCount = _issues.where((e) => e.status.trim().toLowerCase() != 'solved' && e.status.trim().toLowerCase() != 'monitoring').length;
 
       final buffer = StringBuffer();
       buffer.writeln('*COLLECTED ISSUE - $formattedDate*');
       buffer.writeln('Total Issue: $totalIssues');
       buffer.writeln('Solved: $solvedCount');
+      buffer.writeln('Monitoring: $monitoringCount');
       buffer.writeln('Pending: $pendingCount');
       buffer.writeln();
 
@@ -303,7 +305,15 @@ class _IssueListScreenState extends State<IssueListScreen> {
         final area = issue.area.toUpperCase();
         final kendala = issue.issue;
         final penyebab = issue.penyebab.isNotEmpty ? issue.penyebab : '-';
-        final status = issue.status.toLowerCase() == 'solved' ? 'SOLVED ✅' : 'PENDING ⏳';
+        final statusLower = issue.status.trim().toLowerCase();
+        final String status;
+        if (statusLower == 'solved') {
+          status = 'SOLVED ✅';
+        } else if (statusLower == 'monitoring') {
+          status = 'MONITORING 🔍';
+        } else {
+          status = 'PENDING ⏳';
+        }
 
         buffer.writeln('$noUrut. *Area:* $area');
         buffer.writeln('   *Issue/Kendala:* $kendala');

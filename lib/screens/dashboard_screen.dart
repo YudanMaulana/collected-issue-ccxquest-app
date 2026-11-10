@@ -66,6 +66,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     final total = _metrics['total'] as int? ?? 0;
     final solved = _metrics['solved'] as int? ?? 0;
+    final monitoring = _metrics['monitoring'] as int? ?? 0;
     final pending = _metrics['pending'] as int? ?? 0;
     final byArea = _metrics['byArea'] as Map<String, int>? ?? {};
     final byKategori = _metrics['byKategori'] as Map<String, int>? ?? {};
@@ -161,6 +162,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     value: solved.toString(),
                     icon: Icons.check_circle_outline,
                     color: AppTheme.statusSolved,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildMetricCard(
+                    title: 'Monitoring',
+                    value: monitoring.toString(),
+                    icon: Icons.remove_red_eye_outlined,
+                    color: AppTheme.statusMonitoring,
                   ),
                 ),
                 const SizedBox(width: 12),
