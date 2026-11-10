@@ -206,6 +206,7 @@ class Issue {
       penyebab: syncFields.contains(syncFieldPenyebab) ? source.penyebab : penyebab,
       status: syncFields.contains(syncFieldStatus) ? source.status : status,
       evide: syncFields.contains(syncFieldEviden) ? source.evide : evide,
+      priority: syncFields.contains(syncFieldPriority) ? source.priority : priority,
     );
   }
 

@@ -96,11 +96,14 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
   
   // Penanganan Vendor recommendations
   final List<String> _penangananRecommendations = [
-    'TIM IMAJI',
     'IT SUPPORT',
+    'MAINTENANCE',
+    'TIM IMAJI',
+    'BU E',
     'OFFICER',
   ];
   final List<MapEntry<String, String>> _syncableFields = const [
+    MapEntry(Issue.syncFieldPriority, 'Sinkron Priority'),
     MapEntry(Issue.syncFieldArea, 'Sinkron Area'),
     MapEntry(Issue.syncFieldIssue, 'Sinkron Issue'),
     MapEntry(Issue.syncFieldKategori, 'Sinkron Kategori'),
