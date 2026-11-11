@@ -271,6 +271,16 @@ class _IssueListScreenState extends State<IssueListScreen> {
     }
   }
 
+  int _priorityWeight(String? priority) {
+    if (priority == null) return 999;
+    final p = priority.trim().toUpperCase().replaceAll(' ', '').replaceAll('-', '');
+    if (p == 'P0' || p.contains('CRITICAL')) return 0;
+    if (p == 'P1' || p.contains('HIGH')) return 1;
+    if (p == 'P2' || p.contains('MEDIUM')) return 2;
+    if (p == 'P3' || p.contains('COMMON')) return 3;
+    return 999;
+  }
+
   Future<void> _handleCopyWhatsApp() async {
     if (_selectedFilterDate == null) return;
     if (_issues.isEmpty) {
@@ -299,8 +309,20 @@ class _IssueListScreenState extends State<IssueListScreen> {
       buffer.writeln('Pending: $pendingCount');
       buffer.writeln();
 
-      for (int i = 0; i < _issues.length; i++) {
-        final issue = _issues[i];
+      final sortedIssues = List<Issue>.from(_issues);
+      sortedIssues.sort((a, b) {
+        final weightA = _priorityWeight(a.priority);
+        final weightB = _priorityWeight(b.priority);
+        if (weightA != weightB) {
+          return weightA.compareTo(weightB);
+        }
+        final indexA = _issues.indexOf(a);
+        final indexB = _issues.indexOf(b);
+        return indexA.compareTo(indexB);
+      });
+
+      for (int i = 0; i < sortedIssues.length; i++) {
+        final issue = sortedIssues[i];
         final noUrut = i + 1;
         final area = issue.area.toUpperCase();
         final kendala = issue.issue;
@@ -316,10 +338,13 @@ class _IssueListScreenState extends State<IssueListScreen> {
         }
 
         buffer.writeln('$noUrut. *Area:* $area');
+        if (issue.priority.trim().isNotEmpty) {
+          buffer.writeln('   *Priority:* ${issue.priority.trim().toUpperCase()}');
+        }
         buffer.writeln('   *Issue/Kendala:* $kendala');
         buffer.writeln('   *Penyebab:* $penyebab');
         buffer.writeln('   *Status Perbaikan:* $status');
-        if (i < _issues.length - 1) {
+        if (i < sortedIssues.length - 1) {
           buffer.writeln();
         }
       }
