@@ -381,16 +381,13 @@ class _IssueListScreenState extends State<IssueListScreen> {
     }
   }
 
-  Future<void> _addNewIssue() async {
+  Future<Map<String, dynamic>> _getPreviousDayIssues(DateTime targetDate) async {
     List<Issue> latestIssues = [];
     DateTime? latestDate;
-    final targetDate = _selectedFilterDate ?? DateTime.now();
-
     try {
       final all = await widget.repository.getAllIssues();
       if (all.isNotEmpty) {
-        final sorted = List<Issue>.from(all)
-          ..sort((a, b) => b.tgl.compareTo(a.tgl));
+        final sorted = List<Issue>.from(all)..sort((a, b) => b.tgl.compareTo(a.tgl));
 
         // Find issues strictly before the targetDate
         final beforeTarget = sorted.where((e) {
@@ -417,15 +414,183 @@ class _IssueListScreenState extends State<IssueListScreen> {
     } catch (e) {
       print('Gagal mengambil data terakhir untuk disalin: $e');
     }
+    return {
+      'latestDate': latestDate,
+      'latestIssues': latestIssues,
+    };
+  }
 
+  Future<void> _performCopyAllIssues({
+    required List<Issue> sourceIssues,
+    required DateTime targetDate,
+  }) async {
+    if (sourceIssues.isEmpty) return;
+
+    final String formattedTarget = DateFormat('dd MMMM yyyy').format(targetDate.toLocal());
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.cardBg,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.copy_all, color: AppTheme.accentYellow, size: 24),
+            SizedBox(width: 8),
+            Text('Salin Semua Issue?', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 16)),
+          ],
+        ),
+        content: Text(
+          'Apakah Anda yakin ingin menyalin ${sourceIssues.length} issue ke tanggal $formattedTarget dalam 1-klik?',
+          style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal', style: TextStyle(color: AppTheme.textSecondary)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.accentYellow,
+              foregroundColor: AppTheme.primaryNavy,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Ya, Salin Semua', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true || !mounted) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const PopScope(
+        canPop: false,
+        child: Center(
+          child: Card(
+            color: AppTheme.cardBg,
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(color: AppTheme.accentYellow),
+                  SizedBox(height: 18),
+                  Text(
+                    'Sedang menyalin issue...',
+                    style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                  SizedBox(height: 6),
+                  Text(
+                    'Mohon tunggu sebentar',
+                    style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    int successCount = 0;
+    final now = DateTime.now();
+    final finalTargetDate = DateTime(
+      targetDate.year,
+      targetDate.month,
+      targetDate.day,
+      now.hour,
+      now.minute,
+      now.second,
+    );
+
+    for (final item in sourceIssues) {
+      try {
+        final newIssue = Issue(
+          id: null,
+          tgl: finalTargetDate,
+          area: item.area,
+          kategori: item.kategori,
+          issue: item.issue,
+          penanganan: item.penanganan,
+          status: item.status.trim().toLowerCase() == 'solved' ? 'pending' : item.status,
+          perulanganMasalah: item.perulanganMasalah + 1,
+          penyebab: item.penyebab,
+          evide: item.evide,
+          tagIssue: item.tagIssue,
+          kodeIssue: item.kodeIssue,
+          tagDetail: item.tagDetail,
+          priority: item.priority,
+        );
+        await widget.repository.insertIssue(newIssue);
+        successCount++;
+      } catch (err) {
+        print('Gagal menyalin issue ${item.kodeIssue}: $err');
+      }
+    }
+
+    if (mounted) {
+      Navigator.of(context, rootNavigator: true).pop();
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle_outline, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Sukses! $successCount issue berhasil disalin ke $formattedTarget.',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: AppTheme.statusSolved,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      await _loadIssues();
+    }
+  }
+
+  Future<void> _addNewIssue() async {
+    final targetDate = _selectedFilterDate ?? DateTime.now();
+    final prevData = await _getPreviousDayIssues(targetDate);
+    final List<Issue> latestIssues = List<Issue>.from(prevData['latestIssues'] as List<Issue>? ?? []);
+    final DateTime? latestDate = prevData['latestDate'] as DateTime?;
+
+    // Check which issues are not yet in the targetDate to avoid double copying
+    final existingCodes = _issues.map((e) => e.kodeIssue.trim().toUpperCase()).where((c) => c.isNotEmpty).toSet();
+    final existingAreaIssue = _issues.map((e) => '${e.area.trim().toUpperCase()}|||${e.issue.trim().toLowerCase()}').toSet();
+
+    bool isAlreadyAdded(Issue item) {
+      if (item.kodeIssue.trim().isNotEmpty) {
+        return existingCodes.contains(item.kodeIssue.trim().toUpperCase());
+      }
+      return existingAreaIssue.contains('${item.area.trim().toUpperCase()}|||${item.issue.trim().toLowerCase()}');
+    }
+
+    final uncopiedIssues = latestIssues.where((item) => !isAlreadyAdded(item)).toList();
     Issue? duplicateFrom;
+    bool copiedAll = false;
+
     if (latestIssues.isNotEmpty && latestDate != null && mounted) {
       final String formattedDate = DateFormat('dd MMMM yyyy').format(latestDate);
-      
+      bool includeSolved = false;
+
       duplicateFrom = await showDialog<Issue?>(
         context: context,
         builder: (context) => StatefulBuilder(
           builder: (context, setDialogState) {
+            final effectiveCandidates = includeSolved
+                ? uncopiedIssues
+                : uncopiedIssues.where((e) => e.status.trim().toLowerCase() != 'solved').toList();
+
             return AlertDialog(
               backgroundColor: AppTheme.cardBg,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -433,9 +598,11 @@ class _IssueListScreenState extends State<IssueListScreen> {
                 children: [
                   const Icon(Icons.copy, color: AppTheme.accentYellow, size: 24),
                   const SizedBox(width: 8),
-                  Text(
-                    'Salin Data ($formattedDate)',
-                    style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 16),
+                  Expanded(
+                    child: Text(
+                      'Salin Data ($formattedDate)',
+                      style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
                   ),
                 ],
               ),
@@ -443,19 +610,104 @@ class _IssueListScreenState extends State<IssueListScreen> {
                 width: double.maxFinite,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    // 1-CLICK COPY ALL BUTTON
+                    if (uncopiedIssues.isNotEmpty) ...[
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.accentYellow,
+                          foregroundColor: AppTheme.primaryNavy,
+                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          elevation: 3,
+                        ),
+                        icon: const Icon(Icons.copy_all, size: 20),
+                        label: Text(
+                          'SALIN SEMUA (${effectiveCandidates.length} ISSUE) KE HARI INI',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                        ),
+                        onPressed: () {
+                          Navigator.pop(context, null);
+                          copiedAll = true;
+                          _performCopyAllIssues(
+                            sourceIssues: effectiveCandidates,
+                            targetDate: targetDate,
+                          );
+                        },
+                      ),
+                      if (uncopiedIssues.any((e) => e.status.trim().toLowerCase() == 'solved')) ...[
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Checkbox(
+                              value: includeSolved,
+                              activeColor: AppTheme.accentYellow,
+                              checkColor: AppTheme.primaryNavy,
+                              visualDensity: VisualDensity.compact,
+                              onChanged: (val) {
+                                setDialogState(() {
+                                  includeSolved = val ?? false;
+                                });
+                              },
+                            ),
+                            const Expanded(
+                              child: Text(
+                                'Sertakan issue solved',
+                                style: TextStyle(color: AppTheme.textSecondary, fontSize: 11),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                      const SizedBox(height: 10),
+                      const Row(
+                        children: [
+                          Expanded(child: Divider(color: AppTheme.borderNavy)),
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 8),
+                            child: Text('ATAU PILIH SALIN 1-PER-1', style: TextStyle(color: AppTheme.textSecondary, fontSize: 10, fontWeight: FontWeight.bold)),
+                          ),
+                          Expanded(child: Divider(color: AppTheme.borderNavy)),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                    ] else ...[
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppTheme.statusSolved.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: AppTheme.statusSolved.withOpacity(0.3)),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.check_circle_outline, color: AppTheme.statusSolved, size: 18),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Semua issue kemarin sudah disalin ke hari ini.',
+                                style: TextStyle(color: AppTheme.textPrimary, fontSize: 11, fontWeight: FontWeight.w600),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+
                     const Text(
-                      'Pilih salah satu issue dari tanggal terakhir di bawah ini untuk disalin, atau pilih "Mulai Baru":',
-                      style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                      'Pilih salah satu issue di bawah untuk disalin manual, atau pilih "Mulai Baru":',
+                      style: TextStyle(color: AppTheme.textSecondary, fontSize: 11),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
                     if (latestIssues.isEmpty)
                       const Padding(
                         padding: EdgeInsets.symmetric(vertical: 20),
                         child: Center(
                           child: Text(
-                            'Semua data telah dihapus.',
+                            'Tidak ada data issue pada tanggal sebelumnya.',
                             style: TextStyle(color: AppTheme.textSecondary, fontSize: 12, fontStyle: FontStyle.italic),
                           ),
                         ),
@@ -467,12 +719,17 @@ class _IssueListScreenState extends State<IssueListScreen> {
                           itemCount: latestIssues.length,
                           itemBuilder: (context, index) {
                             final item = latestIssues[index];
+                            final alreadyCopied = isAlreadyAdded(item);
                             return Card(
                               margin: const EdgeInsets.only(bottom: 8),
-                              color: AppTheme.secondaryNavy.withOpacity(0.3),
+                              color: alreadyCopied
+                                  ? AppTheme.secondaryNavy.withOpacity(0.15)
+                                  : AppTheme.secondaryNavy.withOpacity(0.4),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(10),
-                                side: const BorderSide(color: AppTheme.borderNavy),
+                                side: BorderSide(
+                                  color: alreadyCopied ? AppTheme.borderNavy.withOpacity(0.4) : AppTheme.borderNavy,
+                                ),
                               ),
                               child: Padding(
                                 padding: const EdgeInsets.all(10),
@@ -485,9 +742,31 @@ class _IssueListScreenState extends State<IssueListScreen> {
                                           child: GestureDetector(
                                             behavior: HitTestBehavior.opaque,
                                             onTap: () => Navigator.pop(context, item),
-                                            child: Text(
-                                              '#${index + 1} - ${item.area}',
-                                              style: const TextStyle(color: AppTheme.textPrimary, fontSize: 11, fontWeight: FontWeight.bold),
+                                            child: Row(
+                                              children: [
+                                                Text(
+                                                  '#${index + 1} - ${item.area}',
+                                                  style: TextStyle(
+                                                    color: alreadyCopied ? AppTheme.textSecondary : AppTheme.textPrimary,
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                                if (alreadyCopied) ...[
+                                                  const SizedBox(width: 6),
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                                    decoration: BoxDecoration(
+                                                      color: AppTheme.statusSolved.withOpacity(0.15),
+                                                      borderRadius: BorderRadius.circular(4),
+                                                    ),
+                                                    child: const Text(
+                                                      'Sudah Ada',
+                                                      style: TextStyle(color: AppTheme.statusSolved, fontSize: 9, fontWeight: FontWeight.bold),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ],
                                             ),
                                           ),
                                         ),
@@ -541,7 +820,10 @@ class _IssueListScreenState extends State<IssueListScreen> {
                                       onTap: () => Navigator.pop(context, item),
                                       child: Text(
                                         'Issue: ${item.issue}',
-                                        style: const TextStyle(color: AppTheme.accentYellow, fontSize: 11),
+                                        style: TextStyle(
+                                          color: alreadyCopied ? AppTheme.accentYellow.withOpacity(0.5) : AppTheme.accentYellow,
+                                          fontSize: 11,
+                                        ),
                                         maxLines: 2,
                                         overflow: TextOverflow.ellipsis,
                                       ),
@@ -567,6 +849,8 @@ class _IssueListScreenState extends State<IssueListScreen> {
         ),
       );
     }
+
+    if (copiedAll) return; // Already copied all in 1 click!
 
     if (!mounted) return;
     final added = await Navigator.push(
@@ -1111,20 +1395,44 @@ class _IssueListScreenState extends State<IssueListScreen> {
           if (_selectedFilterDate != null)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF25D366),
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size(double.infinity, 44),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  elevation: 2,
-                ),
-                onPressed: _handleCopyWhatsApp,
-                icon: const Icon(Icons.copy, size: 18),
-                label: const Text(
-                  'Salin Laporan (WhatsApp)',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 0.5),
-                ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF25D366),
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(0, 42),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        elevation: 2,
+                      ),
+                      onPressed: _handleCopyWhatsApp,
+                      icon: const Icon(Icons.copy, size: 16),
+                      label: const Text(
+                        'Salin (WhatsApp)',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.accentYellow,
+                        foregroundColor: AppTheme.primaryNavy,
+                        minimumSize: const Size(0, 42),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        elevation: 2,
+                      ),
+                      onPressed: _addNewIssue,
+                      icon: const Icon(Icons.copy_all, size: 16),
+                      label: const Text(
+                        'Salin Issue Kemarin',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
 
@@ -1493,12 +1801,41 @@ class _IssueListScreenState extends State<IssueListScreen> {
                 const SizedBox(height: 24),
                 ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    backgroundColor: AppTheme.accentYellow,
+                    foregroundColor: AppTheme.primaryNavy,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    elevation: 3,
                   ),
                   onPressed: _addNewIssue,
+                  icon: const Icon(Icons.copy_all, size: 20),
+                  label: const Text('SALIN SEMUA ISSUE KEMARIN', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                ),
+                const SizedBox(height: 10),
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.textSecondary,
+                    side: const BorderSide(color: AppTheme.borderNavy),
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: () async {
+                    if (!mounted) return;
+                    final added = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => IssueFormScreen(
+                          repository: widget.repository,
+                          initialDate: _selectedFilterDate,
+                        ),
+                      ),
+                    );
+                    if (added == true) {
+                      _loadIssues();
+                    }
+                  },
                   icon: const Icon(Icons.add, size: 18),
-                  label: const Text('TAMBAH ISSUE DI TANGGAL INI', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                  label: const Text('TAMBAH MANUAL (KOSONG)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                 ),
               ],
             ],
